@@ -1,6 +1,25 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Love Alarm Dating App 💕
 
-# Getting Started
+A modern dating and social video-sharing app combining elements of TikTok, Snapchat, Tinder, and Love Alarm. Built with React Native.
+
+## Features
+
+- 📱 **Video Feed**: TikTok-style video browsing with swipe interactions
+- 💬 **Match & Chat**: Real-time messaging with your matches
+- 🗺️ **Location-based Discovery**: Find matches nearby on an interactive map
+- 👤 **Profile Management**: Customizable profiles with photo albums and stats
+- ❤️ **Smart Matching**: Like, comment, and connect with other users
+
+## Tech Stack
+
+- **React Native** 0.83.1
+- **React Navigation** for routing
+- **React Native Maps** for location features
+- **React Native Gesture Handler** for smooth interactions
+- **React Native Vector Icons** for beautiful icons
+- **Linear Gradient** for stunning UI effects
+
+## Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
 
