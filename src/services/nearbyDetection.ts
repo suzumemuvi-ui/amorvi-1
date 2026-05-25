@@ -8,8 +8,9 @@ export interface NearbyUser {
   id: string;
   name: string;
   distance: number;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
+  age: number;
 }
 
 // Calculate distance between two coordinates in meters

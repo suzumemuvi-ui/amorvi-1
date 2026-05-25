@@ -24,7 +24,7 @@ import { AlbumItemViewer } from '../components/AlbumItemViewer';
 const { width } = Dimensions.get('window');
 const imageSize = (width - 60) / 3;
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ navigation }: { navigation?: any }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
@@ -148,7 +148,9 @@ const ProfileScreen = () => {
           style={styles.headerGradient}
         >
           <View style={styles.headerTop}>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation?.navigate('Settings')}
+            >
               <Icon name="settings-outline" size={28} color="#FFF" />
             </TouchableOpacity>
           </View>
@@ -234,7 +236,7 @@ const ProfileScreen = () => {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => setShowEditModal(true)}
+            onPress={() => navigation?.navigate('EditProfile')}
           >
             <View style={styles.actionButtonOutline}>
               <Icon name="create-outline" size={24} color="#000" />

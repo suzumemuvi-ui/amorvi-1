@@ -28,3 +28,10 @@ export interface Message {
   senderId: string;
   timestamp: Date;
 }
+
+export interface NearbyUser {
+  id: string;
+  name: string;
+  distance: number;
+  age: number;
+}

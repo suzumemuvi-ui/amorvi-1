@@ -49,25 +49,38 @@ const HomeScreen = () => {
         style={styles.topGradient}
       >
         <View style={styles.topBar}>
-          <TouchableOpacity>
-            <Icon name="flash" size={24} color="#FFD700" />
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Icon name="camera" size={24} color="#FFF" />
-          </TouchableOpacity>
+          <View style={styles.topBarLeft}>
+            <TouchableOpacity style={styles.headerButton}>
+              <Icon name="flash" size={24} color="#FFD700" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.topBarRight}>
+            <TouchableOpacity style={styles.headerButton}>
+              <Icon name="camera" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerButton}>
+              <Icon name="settings" size={24} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
 
       {/* Bottom Gradient with User Info */}
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.9)']}
+        colors={['transparent', 'rgba(0,0,0,0.95)']}
         style={styles.bottomGradient}
       >
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>
-            {user.name}, {user.age}
-          </Text>
-          <Text style={styles.userBio}>❤️ {user.bio}</Text>
+          <View style={styles.userNameContainer}>
+            <Text style={styles.userName}>
+              {user.name}, {user.age}
+            </Text>
+            <View style={styles.locationBadge}>
+              <Icon name="location" size={14} color="#FF6B9D" />
+              <Text style={styles.locationText}>{user.distance || 'N/A'} km away</Text>
+            </View>
+          </View>
+          <Text style={styles.userBio}>{user.bio}</Text>
         </View>
 
         {/* Match Indicator */}
@@ -78,14 +91,11 @@ const HomeScreen = () => {
                 source={{ uri: user.images[0] }}
                 style={styles.matchAvatar}
               />
-              <Icon
-                name="heart"
-                size={16}
-                color="#FF6B9D"
-                style={styles.matchIcon}
-              />
+              <View style={styles.matchBadge}>
+                <Icon name="heart" size={12} color="#FF6B9D" />
+              </View>
             </View>
-            <Text style={styles.matchText}>Alex, 23</Text>
+            <Text style={styles.matchText}>{user.name} also liked you!</Text>
           </View>
         )}
       </LinearGradient>
@@ -94,21 +104,30 @@ const HomeScreen = () => {
       <View style={styles.rightActions}>
         <View style={styles.actionItem}>
           <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
-            <Icon name="heart" size={32} color="#FFF" />
+            <LinearGradient
+              colors={['#FF6B9D', '#FF1493']}
+              style={styles.actionButtonGradient}
+            >
+              <Icon name="heart" size={28} color="#FFF" />
+            </LinearGradient>
           </TouchableOpacity>
           <Text style={styles.actionText}>{user.likes || 235}</Text>
         </View>
 
         <View style={styles.actionItem}>
           <TouchableOpacity style={styles.actionButton} onPress={handleComment}>
-            <Icon name="chatbubble" size={28} color="#FFF" />
+            <View style={styles.actionButtonPlain}>
+              <Icon name="chatbubble" size={24} color="#FFF" />
+            </View>
           </TouchableOpacity>
           <Text style={styles.actionText}>10.2k</Text>
         </View>
 
         <View style={styles.actionItem}>
           <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-            <Icon name="paper-plane" size={28} color="#FFF" />
+            <View style={styles.actionButtonPlain}>
+              <Icon name="paper-plane" size={24} color="#FFF" />
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -143,56 +162,93 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 50,
+    alignItems: 'center',
+  },
+  topBarLeft: {
+    flex: 1,
+  },
+  topBarRight: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerButton: {
+    padding: 8,
   },
   bottomGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 250,
+    height: 280,
     justifyContent: 'flex-end',
     paddingBottom: 80,
     paddingHorizontal: 20,
   },
   userInfo: {
-    marginBottom: 10,
+    marginBottom: 16,
+  },
+  userNameContainer: {
+    marginBottom: 8,
   },
   userName: {
     color: '#FFF',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 5,
+    fontSize: 32,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 107, 157, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  locationText: {
+    color: '#FF6B9D',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   userBio: {
     color: '#FFF',
     fontSize: 16,
+    fontWeight: '500',
+    opacity: 0.95,
   },
   matchIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 24,
     alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 157, 0.3)',
   },
   matchAvatarContainer: {
     position: 'relative',
-    marginRight: 8,
+    marginRight: 10,
   },
   matchAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 2,
     borderColor: '#FF6B9D',
   },
-  matchIcon: {
+  matchBadge: {
     position: 'absolute',
     bottom: -2,
     right: -2,
     backgroundColor: '#FFF',
-    borderRadius: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   matchText: {
     color: '#FFF',
@@ -201,31 +257,59 @@ const styles = StyleSheet.create({
   },
   rightActions: {
     position: 'absolute',
-    right: 15,
+    right: 12,
     bottom: 100,
     alignItems: 'center',
+    gap: 4,
   },
   actionItem: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   actionButton: {
-    marginBottom: 5,
+    marginBottom: 6,
+  },
+  actionButtonGradient: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF6B9D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  actionButtonPlain: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   actionText: {
     color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
   profilePic: {
-    marginTop: 10,
+    marginTop: 12,
   },
   profileImage: {
-    width: 45,
-    height: 45,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 2,
-    borderColor: '#FFF',
+    borderColor: '#FF6B9D',
+    shadowColor: '#FF6B9D',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });
 

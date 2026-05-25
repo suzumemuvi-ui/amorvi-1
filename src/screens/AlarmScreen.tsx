@@ -19,10 +19,14 @@ import {
 } from '../services/nearbyDetection';
 
 const AlarmScreen = () => {
-  const [ringsCount, setRingsCount] = useState(0);
-  const [isActive, setIsActive] = useState(false);
-  const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
-  const [showHearts, setShowHearts] = useState(false);
+  const [ringsCount, setRingsCount] = useState(3); // Demo: 3 nearby users
+  const [isActive, setIsActive] = useState(true);
+  const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([
+    { id: '2', name: 'Alex', distance: 45, age: 23 },
+    { id: '3', name: 'Sarah', distance: 78, age: 24 },
+    { id: '4', name: 'Emma', distance: 120, age: 22 },
+  ]);
+  const [showHearts, setShowHearts] = useState(true);
   const [detectionCleanup, setDetectionCleanup] = useState<(() => void) | null>(
     null,
   );
@@ -32,6 +36,7 @@ const AlarmScreen = () => {
   const ring2Anim = React.useRef(new Animated.Value(1)).current;
   const ring3Anim = React.useRef(new Animated.Value(1)).current;
   const ring4Anim = React.useRef(new Animated.Value(1)).current;
+  const rotateAnim = React.useRef(new Animated.Value(0)).current;
 
   const ring1Opacity = React.useRef(new Animated.Value(0.8)).current;
   const ring2Opacity = React.useRef(new Animated.Value(0.8)).current;
@@ -76,11 +81,21 @@ const AlarmScreen = () => {
       );
     };
 
+    // Rotation animation for radar sweep
+    const rotationAnimation = Animated.loop(
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 4000,
+        useNativeDriver: true,
+      }),
+    );
+
     const animations = Animated.parallel([
       createRipple(ring1Anim, ring1Opacity, 0),
       createRipple(ring2Anim, ring2Opacity, 300),
       createRipple(ring3Anim, ring3Opacity, 600),
       createRipple(ring4Anim, ring4Opacity, 900),
+      rotationAnimation,
     ]);
 
     animations.start();
@@ -162,97 +177,78 @@ const AlarmScreen = () => {
 
       {/* Center Content */}
       <View style={styles.centerContent}>
-        {/* Ripple Rings */}
-        <View style={styles.ringsContainer}>
+        {/* Radar Container */}
+        <View style={styles.radarContainer}>
+          {/* Background Rings */}
+          <View style={[styles.ring, styles.ring1]} />
+          <View style={[styles.ring, styles.ring2]} />
+          <View style={[styles.ring, styles.ring3]} />
+          <View style={[styles.ring, styles.ring4]} />
+
+          {/* Radar Sweep Line */}
           <Animated.View
             style={[
-              styles.ring,
-              styles.ring1,
+              styles.radarSweep,
               {
-                transform: [{ scale: ring1Anim }],
-                opacity: ring1Opacity,
-              },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.ring,
-              styles.ring2,
-              {
-                transform: [{ scale: ring2Anim }],
-                opacity: ring2Opacity,
-              },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.ring,
-              styles.ring3,
-              {
-                transform: [{ scale: ring3Anim }],
-                opacity: ring3Opacity,
-              },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.ring,
-              styles.ring4,
-              {
-                transform: [{ scale: ring4Anim }],
-                opacity: ring4Opacity,
+                transform: [
+                  {
+                    rotate: rotateAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '360deg'],
+                    }),
+                  },
+                ],
               },
             ]}
           />
 
-          {/* Hearts on Rings - shown when users are detected */}
-          {showHearts &&
-            nearbyUsers.map((user, index) => (
+          {/* User Profiles Positioned on Radar */}
+          {nearbyUsers.map((user, index) => {
+            const angle = (index * 360) / nearbyUsers.length;
+            const distance = 80 + (user.distance / 120) * 40;
+            const radian = (angle * Math.PI) / 180;
+            const x = distance * Math.cos(radian - Math.PI / 2);
+            const y = distance * Math.sin(radian - Math.PI / 2);
+
+            return (
               <View
                 key={index}
                 style={[
-                  styles.ringHeart,
-                  index === 0 ? styles.ringHeart1 : styles.ringHeart2,
+                  styles.userPinContainer,
+                  {
+                    transform: [
+                      { translateX: x },
+                      { translateY: y },
+                    ],
+                  },
                 ]}
               >
-                <Icon name="heart" size={28} color="#FF1493" />
-              </View>
-            ))}
-
-          {/* Heart Center */}
-          <View style={styles.heartContainer}>
-            <View style={[styles.heartCircle, isActive && styles.heartActive]}>
-              {showHearts ? (
-                <View style={styles.heartsWrapper}>
-                  <Icon name="heart" size={50} color="#FFF" />
+                <View style={styles.userPin}>
+                  <LinearGradient
+                    colors={['#FF6B9D', '#FF1493']}
+                    style={styles.userAvatarGradient}
+                  >
+                    <Icon name="heart" size={20} color="#FFF" />
+                  </LinearGradient>
                 </View>
-              ) : (
-                <Icon
-                  name={isActive ? 'heart' : 'heart-outline'}
-                  size={60}
-                  color="#FFF"
-                />
-              )}
-            </View>
+                <Text style={styles.userDistance}>{user.distance}m</Text>
+              </View>
+            );
+          })}
+
+          {/* Center Heart */}
+          <View style={styles.radarCenter}>
+            <LinearGradient
+              colors={['#FF6B9D', '#FF1493']}
+              style={styles.centerHeart}
+            >
+              <Icon name="heart" size={40} color="#FFF" />
+            </LinearGradient>
           </View>
         </View>
 
         {/* Counter */}
         <Text style={styles.counter}>{ringsCount}</Text>
-
-        {/* Distance Info */}
-        {nearbyUsers.length > 0 && (
-          <View style={styles.distanceContainer}>
-            {nearbyUsers.map((user, index) => (
-              <View key={index} style={styles.distanceItem}>
-                <Icon name="person" size={16} color="#FFF" />
-                <Text style={styles.distanceText}>
-                  {user.name} - {user.distance}m away
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
 
         <Text style={styles.subtitle}>
           {showHearts
@@ -261,6 +257,23 @@ const AlarmScreen = () => {
             ? 'Searching...'
             : 'Ring your alarm'}
         </Text>
+
+        {/* Nearby Users List */}
+        {nearbyUsers.length > 0 && (
+          <View style={styles.usersList}>
+            {nearbyUsers.map((user, index) => (
+              <View key={index} style={styles.userListItem}>
+                <View style={styles.userListAvatar}>
+                  <Icon name="person" size={16} color="#FFF" />
+                </View>
+                <View style={styles.userListInfo}>
+                  <Text style={styles.userName}>{user.name}</Text>
+                  <Text style={styles.userAge}>{user.age} • {user.distance}m away</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Bottom Button */}
@@ -304,97 +317,169 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
-  ringsContainer: {
-    width: 300,
-    height: 300,
+  radarContainer: {
+    width: 280,
+    height: 280,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    marginBottom: 20,
   },
   ring: {
     position: 'absolute',
     borderRadius: 1000,
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   ring1: {
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 80,
   },
   ring2: {
-    width: 150,
-    height: 150,
-  },
-  ringHeart: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    padding: 5,
-    shadowColor: '#FF1493',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  ringHeart1: {
-    top: 20,
-    right: 20,
-  },
-  ringHeart2: {
-    bottom: 20,
-    left: 20,
-  },
-  heartSticker: {
-    position: 'absolute',
-  },
-  heartSticker1: {
-    top: -5,
-    right: -5,
-  },
-  heartSticker2: {
-    bottom: -5,
-    left: -5,
-  },
-  heartsWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  counter: {
-    fontSize: 72,
-    fontWeight: 'bold',
-    color: '#FFF',
-    marginTop: 40,
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  distanceContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  distanceItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginVertical: 5,
-  },
-  distanceText: {
-    fontSize: 14,
-    color: '#FFF',
-    fontWeight: '600',
-    marginLeft: 8,
+    width: 140,
+    height: 140,
   },
   ring3: {
     width: 200,
     height: 200,
   },
   ring4: {
-    width: 250,
-    height: 250,
+    width: 260,
+    height: 260,
+  },
+  radarSweep: {
+    position: 'absolute',
+    width: 130,
+    height: 260,
+    borderLeftWidth: 2,
+    borderLeftColor: 'rgba(255, 107, 157, 0.6)',
+  },
+  userPinContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+  },
+  userPin: {
+    marginBottom: 4,
+  },
+  userAvatarGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
+    shadowColor: '#FF6B9D',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  userDistance: {
+    fontSize: 11,
+    color: '#FFF',
+    fontWeight: '600',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  radarCenter: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerHeart: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF6B9D',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  counter: {
+    fontSize: 64,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginTop: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  usersList: {
+    marginTop: 20,
+    width: '100%',
+    maxHeight: 150,
+  },
+  userListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  userListAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 107, 157, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  userListInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  userAge: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 2,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#FFF',
+    marginTop: 10,
+    opacity: 0.9,
+    fontWeight: '600',
+  },
+  bottomContainer: {
+    paddingBottom: 80,
+    alignItems: 'center',
+  },
+  alarmButton: {
+    width: 80,
+    height: 80,
+  },
+  buttonRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   heartContainer: {
     justifyContent: 'center',
@@ -418,36 +503,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 30,
   },
-  subtitle: {
-    fontSize: 16,
+  distanceContainer: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  distanceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginVertical: 5,
+  },
+  distanceText: {
+    fontSize: 14,
     color: '#FFF',
-    marginTop: 10,
-    opacity: 0.9,
-  },
-  bottomContainer: {
-    paddingBottom: 100,
-    alignItems: 'center',
-  },
-  alarmButton: {
-    width: 80,
-    height: 80,
-  },
-  buttonRing: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
 
