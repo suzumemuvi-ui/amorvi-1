@@ -9,6 +9,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import AccountScreen from '../screens/AccountScreen';
+import ChatMessagesScreen from '../screens/ChatMessagesScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -80,7 +81,7 @@ const TabNavigator = () => {
       />
       <Tab.Screen
         name="Chats"
-        component={DatingScreen}
+        component={ChatMessagesScreen}
         options={{
           tabBarLabel: 'Chats',
           tabBarIcon: ({ color, size }) => (
