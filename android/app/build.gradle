@@ -116,6 +116,9 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // Google Play Services for Maps (required by react-native-maps)
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
 }
 
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")

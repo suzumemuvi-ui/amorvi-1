@@ -460,24 +460,17 @@ const [state, send] = useMachine(userMachine, {
 XState machines are easily testable:
 
 ```typescript
-import { createTestingPactimers } from '@xstate/test';
+import { createActor } from 'xstate';
 
 test('auth flow', () => {
-  const machine = authMachine;
-  const testPlans = createTestingPactimers(machine);
-  
-  testPlans.forEach(plan => {
-    test(plan.description, () => {
-      let state = machine.initialState;
-      
-      plan.paths.forEach(path => {
-        path.segments.forEach(({ event, state: nextState }) => {
-          state = machine.transition(state, event);
-          expect(state).toEqual(nextState);
-        });
-      });
-    });
-  });
+  const actor = createActor(authMachine);
+
+  actor.start();
+  actor.send({ type: 'LOGIN_SUBMIT' });
+
+  expect(actor.getSnapshot().matches('authenticating')).toBe(true);
+
+  actor.stop();
 });
 ```
 
@@ -610,4 +603,3 @@ console.log('Next state:', nextState.value);
 **Last Updated**: May 2026
 **XState Version**: 5.0.0
 **React Native Version**: 0.83.1
-
