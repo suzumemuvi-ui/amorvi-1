@@ -19,8 +19,22 @@ interface EditProfileModalProps {
     name: string;
     age: number;
     bio: string;
+    city?: string;
+    jobTitle?: string;
+    education?: string;
+    interests?: string[];
+    additionalInfo?: string[];
   };
-  onSave: (data: { name: string; age: string; bio: string }) => void;
+  onSave: (data: {
+    name: string;
+    age: string;
+    bio: string;
+    city: string;
+    jobTitle: string;
+    education: string;
+    interests: string[];
+    additionalInfo: string[];
+  }) => void;
 }
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
@@ -32,6 +46,15 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [name, setName] = useState(userData.name);
   const [age, setAge] = useState(userData.age.toString());
   const [bio, setBio] = useState(userData.bio);
+  const [city, setCity] = useState(userData.city || '');
+  const [jobTitle, setJobTitle] = useState(userData.jobTitle || '');
+  const [education, setEducation] = useState(userData.education || '');
+  const [interests, setInterests] = useState(
+    (userData.interests || []).join(', '),
+  );
+  const [additionalInfo, setAdditionalInfo] = useState(
+    (userData.additionalInfo || []).join(', '),
+  );
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -42,7 +65,22 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       Alert.alert('Error', 'Please enter a valid age (18-100)');
       return;
     }
-    onSave({ name: name.trim(), age, bio: bio.trim() });
+    onSave({
+      name: name.trim(),
+      age,
+      bio: bio.trim(),
+      city: city.trim(),
+      jobTitle: jobTitle.trim(),
+      education: education.trim(),
+      interests: interests
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean),
+      additionalInfo: additionalInfo
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean),
+    });
     onClose();
   };
 
@@ -98,6 +136,67 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 maxLength={150}
               />
               <Text style={styles.charCount}>{bio.length}/150</Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>City</Text>
+              <TextInput
+                style={styles.input}
+                value={city}
+                onChangeText={setCity}
+                placeholder="City"
+                maxLength={50}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Job Title</Text>
+              <TextInput
+                style={styles.input}
+                value={jobTitle}
+                onChangeText={setJobTitle}
+                placeholder="Job title"
+                maxLength={50}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Education</Text>
+              <TextInput
+                style={styles.input}
+                value={education}
+                onChangeText={setEducation}
+                placeholder="Education"
+                maxLength={60}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Interests</Text>
+              <TextInput
+                style={styles.input}
+                value={interests}
+                onChangeText={setInterests}
+                placeholder="e.g. Travel, Cooking, Yoga"
+                maxLength={120}
+              />
+              <Text style={styles.inputHint}>
+                Separate items with commas.
+              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Additional Info</Text>
+              <TextInput
+                style={styles.input}
+                value={additionalInfo}
+                onChangeText={setAdditionalInfo}
+                placeholder="e.g. Non-smoker, Pet lover"
+                maxLength={120}
+              />
+              <Text style={styles.inputHint}>
+                Separate items with commas.
+              </Text>
             </View>
           </ScrollView>
 
@@ -177,6 +276,11 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 5,
     textAlign: 'right',
+  },
+  inputHint: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
   },
   modalFooter: {
     flexDirection: 'row',

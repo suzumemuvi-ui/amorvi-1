@@ -16,7 +16,11 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { Map as MapLibreMap, Camera, Marker } from '@maplibre/maplibre-react-native';
+import {
+  Map as MapLibreMap,
+  Camera,
+  Marker,
+} from '@maplibre/maplibre-react-native';
 import {
   NearbyUser,
 } from '../services/nearbyDetection';
@@ -38,12 +42,14 @@ import {
   type RadarMode,
   type InterestZone,
 } from '../services/radarModes';
+import { useAuthSession } from '../context/AuthSessionContext';
 
 const { width } = Dimensions.get('window');
 const { height } = Dimensions.get('window');
 
 const RadarScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<any>();
+  const { logout } = useAuthSession();
   const mapRef = useRef(null);
   const [radarMode, setRadarMode] = useState<RadarMode>('love');
   const [currentUserIndex, setCurrentUserIndex] = useState(0);
@@ -54,9 +60,45 @@ const RadarScreen = () => {
   const [highMatchCount, setHighMatchCount] = useState(0);
   
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([
-    { id: '2', name: 'Ana', distance: 8, age: 23 },
-    { id: '3', name: 'Sarah', distance: 12, age: 24 },
-    { id: '4', name: 'Emma', distance: 15, age: 22 },
+    {
+      id: '2',
+      name: 'Ana',
+      distance: 8,
+      age: 23,
+      latitude: 41.9987,
+      longitude: 21.4259,
+      interests: ['travel', 'fitness', 'culture'],
+      countries: ['Italy', 'Greece', 'Thailand'],
+      bio: 'Backpacker and culture lover. Always planning the next city escape.',
+      city: 'Skopje',
+      goals: ['friendship', 'networking'],
+    },
+    {
+      id: '3',
+      name: 'Sarah',
+      distance: 12,
+      age: 24,
+      latitude: 41.9978,
+      longitude: 21.4265,
+      interests: ['travel', 'coffee', 'photography'],
+      countries: ['Spain', 'Japan', 'Mexico'],
+      bio: 'Travel blogger sharing local food and hidden gems around the world.',
+      city: 'Skopje',
+      goals: ['relationship', 'dating'],
+    },
+    {
+      id: '4',
+      name: 'Emma',
+      distance: 15,
+      age: 22,
+      latitude: 41.9992,
+      longitude: 21.4243,
+      interests: ['travel', 'music', 'art'],
+      countries: ['France', 'New Zealand', 'Morocco'],
+      bio: 'Festival traveler who loves music, art, and last-minute weekend trips.',
+      city: 'Skopje',
+      goals: ['networking', 'events'],
+    },
   ]);
   const [detectionCleanup, setDetectionCleanup] = useState<(() => void) | null>(
     null,
@@ -336,15 +378,30 @@ const RadarScreen = () => {
     setCurrentUserIndex((prev) => (prev + 1) % nearbyUsers.length);
   };
 
+  const handleTravelersSelect = () => {
+    const travelerUsers = nearbyUsers.filter(user =>
+      user.interests?.some(interest => interest.toLowerCase().includes('travel'))
+    );
+
+    if (travelerUsers.length === 0) {
+      Alert.alert(
+        'No Travelers Found',
+        'There are no nearby users matching travel interests right now. Try again later.'
+      );
+      return;
+    }
+
+    navigation.navigate('Swipe' as any, {
+      travelerResults: travelerUsers,
+    });
+  };
+
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', onPress: () => {}, style: 'cancel' },
       {
         text: 'Logout',
-        onPress: () => {
-          // Navigate to Auth screen
-          navigation.navigate('AuthScreen');
-        },
+        onPress: logout,
         style: 'destructive',
       },
     ]);
@@ -352,15 +409,21 @@ const RadarScreen = () => {
 
   // Calculate marker position on radar based on distance and angle
   const getMarkerPosition = (distance: number, idx: number) => {
-    const maxRadius = 220; // pixels
+    const maxRadius = 200; // pixels
     const angle = (idx * 120); // 3 users spread out
-    const radius = (distance / 20) * maxRadius; // normalize distance to pixels
+    const radius = Math.min((distance / 20) * maxRadius, maxRadius); // normalize distance to pixels
     
     const radians = (angle * Math.PI) / 180;
     const x = radius * Math.cos(radians);
     const y = radius * Math.sin(radians);
     
     return { x, y };
+  };
+
+  // Format distance display
+  const formatDistance = (distance: number) => {
+    if (distance < 1) return `${Math.round(distance * 1000)}m`;
+    return `${distance.toFixed(1)}km`;
   };
 
   return (
@@ -372,7 +435,7 @@ const RadarScreen = () => {
         mapStyle={{
           version: 8,
           sources: {
-            'raster-tiles': {
+            'osm-tiles': {
               type: 'raster',
               tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
               tileSize: 256,
@@ -380,9 +443,9 @@ const RadarScreen = () => {
           },
           layers: [
             {
-              id: 'tiles',
+              id: 'osm-tiles',
               type: 'raster',
-              source: 'raster-tiles',
+              source: 'osm-tiles',
             },
           ],
         }}
@@ -396,7 +459,7 @@ const RadarScreen = () => {
 
       {/* Radar Overlay */}
       <LinearGradient
-        colors={['rgba(108, 91, 123, 0.7)', 'rgba(74, 63, 92, 0.5)']}
+        colors={['rgba(108, 91, 123, 0.25)', 'rgba(74, 63, 92, 0.18)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.radarOverlay}
@@ -581,6 +644,13 @@ const RadarScreen = () => {
               <Text style={styles.modeText}>Events</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            style={styles.travelersButton}
+            onPress={handleTravelersSelect}
+          >
+            <Icon name="airplane" size={18} color="#FFF" />
+            <Text style={styles.travelersText}>Travelers</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Match Info - Show when user selected */}
@@ -595,9 +665,31 @@ const RadarScreen = () => {
             
             {nearbyUsers.find(u => u.id === selectedUser) && (
               <>
-                <Text style={styles.matchName}>
-                  {nearbyUsers.find(u => u.id === selectedUser)!.name}, {nearbyUsers.find(u => u.id === selectedUser)!.age}
-                </Text>
+                <View style={styles.cardHeader}>
+                  <View>
+                    <Text style={styles.matchName}>
+                      {nearbyUsers.find(u => u.id === selectedUser)!.name}
+                    </Text>
+                    <Text style={styles.matchAge}>
+                      {nearbyUsers.find(u => u.id === selectedUser)!.age} years old
+                    </Text>
+                  </View>
+                  <View style={[styles.matchBadge, { backgroundColor: getMarkerColor(matchScores[selectedUser]!.matchPercentage) }]}>
+                    <Text style={styles.matchBadgeText}>
+                      {matchScores[selectedUser]!.matchPercentage}%
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Distance Range */}
+                <View style={styles.distanceSection}>
+                  <Icon name="location" size={16} color="#FF6B9D" />
+                  <Text style={styles.distanceText}>
+                    {formatDistance(nearbyUsers.find(u => u.id === selectedUser)!.distance)} away
+                  </Text>
+                </View>
+
+                {/* Match Percentage Bar */}
                 <View style={styles.matchPercentageBar}>
                   <View style={[
                     styles.matchPercentageFill,
@@ -611,9 +703,11 @@ const RadarScreen = () => {
                   {matchScores[selectedUser]!.matchPercentage}% Match
                 </Text>
                 
+                {/* Why You Match */}
                 {matchScores[selectedUser]!.reasons.length > 0 && (
                   <View style={styles.reasonsList}>
-                    {matchScores[selectedUser]!.reasons.slice(0, 3).map((reason: string, idx: number) => (
+                    <Text style={styles.reasonsTitle}>Why you match:</Text>
+                    {matchScores[selectedUser]!.reasons.slice(0, 4).map((reason: string, idx: number) => (
                       <Text key={idx} style={styles.reasonText}>✓ {reason}</Text>
                     ))}
                   </View>
@@ -893,11 +987,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  distanceText: {
-    fontSize: 13,
-    color: '#FF6B9D',
-    fontWeight: '600',
-  },
   cardActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -965,6 +1054,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  travelersButton: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: '#2196F3',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    gap: 10,
+  },
+  travelersText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   modeButton: {
     flex: 1,
     flexDirection: 'column',
@@ -1006,10 +1112,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   matchName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#FFF',
-    marginTop: 20,
+  },
+  matchAge: {
+    fontSize: 14,
+    color: '#AAA',
+    marginTop: 4,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  matchBadge: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  matchBadgeText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFF',
+  },
+  distanceSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  distanceText: {
+    fontSize: 13,
+    color: '#FFF',
+  },
+  reasonsTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FF6B9D',
+    marginBottom: 6,
   },
   matchPercentageBar: {
     height: 8,

@@ -39,6 +39,11 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
     name: currentUser.name,
     age: currentUser.age,
     bio: currentUser.bio,
+    city: currentUser.city || '',
+    jobTitle: currentUser.jobTitle || '',
+    education: currentUser.education || '',
+    interests: currentUser.interests || [],
+    additionalInfo: currentUser.additionalInfo || [],
   });
   const [profileImage, setProfileImage] = useState(currentUser.images[0]);
   const [albumItems, setAlbumItems] = useState<
@@ -115,11 +120,21 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
     name: string;
     age: string;
     bio: string;
+    city: string;
+    jobTitle: string;
+    education: string;
+    interests: string[];
+    additionalInfo: string[];
   }) => {
     setUserData({
       name: data.name,
       age: parseInt(data.age),
       bio: data.bio,
+      city: data.city,
+      jobTitle: data.jobTitle,
+      education: data.education,
+      interests: data.interests,
+      additionalInfo: data.additionalInfo,
     });
     Alert.alert('Success', 'Profile updated successfully!');
   };
@@ -243,6 +258,62 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
               <Text style={styles.actionButtonTextDark}>Edit Profile</Text>
             </View>
           </TouchableOpacity>
+        </View>
+
+        {/* Profile Details */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Basic Info</Text>
+          </View>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>City</Text>
+              <Text style={styles.infoValue}>{userData.city || 'Not set'}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Work</Text>
+              <Text style={styles.infoValue}>{userData.jobTitle || 'Not set'}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Education</Text>
+              <Text style={styles.infoValue}>{userData.education || 'Not set'}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Interests</Text>
+          </View>
+          <View style={styles.chipRow}>
+            {userData.interests.length > 0 ? (
+              userData.interests.map((interest, index) => (
+                <View key={index} style={styles.chip}>
+                  <Text style={styles.chipText}>{interest}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.infoValue}>No interests added yet.</Text>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Additional Info</Text>
+          </View>
+          <View style={styles.infoCard}>
+            {userData.additionalInfo.length > 0 ? (
+              userData.additionalInfo.map((item, index) => (
+                <View key={index} style={styles.infoListItem}>
+                  <Icon name="star" size={16} color="#FF1493" />
+                  <Text style={styles.infoListText}>{item}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.infoValue}>No additional details yet.</Text>
+            )}
+          </View>
         </View>
 
         {/* Albums Section */}
@@ -509,6 +580,62 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: 20,
     marginBottom: 20,
+  },
+  infoCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F7F7F7',
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#888',
+    fontWeight: '600',
+  },
+  infoValue: {
+    fontSize: 14,
+    color: '#111',
+    maxWidth: '65%',
+    textAlign: 'right',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  chip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: '#FFF0F6',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FFDAE6',
+  },
+  chipText: {
+    color: '#C2185B',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  infoListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  infoListText: {
+    color: '#333',
+    fontSize: 14,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   sectionHeader: {
     flexDirection: 'row',

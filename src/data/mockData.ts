@@ -16,6 +16,11 @@ export const currentUser: User = {
   followers: 15200,
   following: 230,
   likes: 615,
+  city: 'San Francisco',
+  jobTitle: 'Marketing Specialist',
+  education: 'BA in Communications',
+  interests: ['Travel', 'Cooking', 'Yoga', 'Live Music'],
+  additionalInfo: ['Non-smoker', 'Pet lover', 'Looking for something serious'],
   location: {
     latitude: 37.78825,
     longitude: -122.4324,

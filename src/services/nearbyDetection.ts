@@ -11,6 +11,11 @@ export interface NearbyUser {
   latitude?: number;
   longitude?: number;
   age: number;
+  interests?: string[];
+  countries?: string[];
+  bio?: string;
+  city?: string;
+  goals?: string[];
 }
 
 // Calculate distance between two coordinates in meters

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
+import { useAuthSession } from '../context/AuthSessionContext';
 
 interface SettingsState {
   notificationsEnabled: boolean;
@@ -19,6 +20,7 @@ interface SettingsState {
 }
 
 const SettingsScreen = ({ navigation }: { navigation?: any }) => {
+  const { logout } = useAuthSession();
   const [settings, setSettings] = useState<SettingsState>({
     notificationsEnabled: true,
     newMessagesEnabled: true,
@@ -46,10 +48,7 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
         { text: 'Cancel', onPress: () => {}, style: 'cancel' },
         {
           text: 'Log Out',
-          onPress: () => {
-            // TODO: Implement logout logic
-            console.log('User logged out');
-          },
+          onPress: logout,
           style: 'destructive',
         },
       ],

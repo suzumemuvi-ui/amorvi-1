@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,10 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { users, currentUser } from '../data/mockData';
 
 const MapScreen = () => {
+  // Set fallback coordinates if mock data fields are undefined
+  const defaultLat = currentUser?.location?.latitude || 37.78825;
+  const defaultLng = currentUser?.location?.longitude || -122.4324;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -22,58 +26,54 @@ const MapScreen = () => {
         <Text style={styles.headerTitle}>Map</Text>
       </View>
 
-      {/* Map */}
-      <MapView
-        style={styles.map}
-        initialRegion={{
-          latitude: currentUser.location?.latitude || 37.78825,
-          longitude: currentUser.location?.longitude || -122.4324,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        }}
-      >
-        {/* Current User Marker with Circle */}
-        <Circle
-          center={{
-            latitude: currentUser.location?.latitude || 37.78825,
-            longitude: currentUser.location?.longitude || -122.4324,
-          }}
-          radius={500}
-          strokeColor="rgba(255, 107, 157, 0.5)"
-          fillColor="rgba(255, 107, 157, 0.1)"
-          strokeWidth={2}
-        />
-
-        <Marker
-          coordinate={{
-            latitude: currentUser.location?.latitude || 37.78825,
-            longitude: currentUser.location?.longitude || -122.4324,
+      {/* Map Wrapping Body View */}
+      <View style={styles.mapContainer}>
+        <MapView
+          style={StyleSheet.absoluteFillObject} // Forces map to fill its explicit boundary
+          initialRegion={{
+            latitude: defaultLat,
+            longitude: defaultLng,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
           }}
         >
-          <View style={styles.currentUserMarker}>
-            <LinearGradient
-              colors={['#FF6B9D', '#FF1493']}
-              style={styles.currentUserGradient}
-            >
-              <Icon name="heart" size={24} color="#FFF" />
-            </LinearGradient>
-          </View>
-        </Marker>
+          {/* Current User Marker Area Circle */}
+          <Circle
+            center={{ latitude: defaultLat, longitude: defaultLng }}
+            radius={500}
+            strokeColor="rgba(255, 107, 157, 0.5)"
+            fillColor="rgba(255, 107, 157, 0.1)"
+            strokeWidth={2}
+          />
 
-        {/* Other Users Markers */}
-        {users.map(
-          user =>
-            user.location && (
+          {/* Core Target Center Marker */}
+          <Marker coordinate={{ latitude: defaultLat, longitude: defaultLng }}>
+            <View style={styles.currentUserMarker}>
+              <LinearGradient
+                colors={['#FF6B9D', '#FF1493']}
+                style={styles.currentUserGradient}
+              >
+                <Icon name="heart" size={24} color="#FFF" />
+              </LinearGradient>
+            </View>
+          </Marker>
+
+          {/* Other Detected Users Markers */}
+          {users?.map(user => {
+            if (!user.location) return null;
+            return (
               <Marker
                 key={user.id}
                 coordinate={{
                   latitude: user.location.latitude,
                   longitude: user.location.longitude,
                 }}
+                // tracksViewChanges={false} prevents performance lag after initial image load
+                tracksViewChanges={false} 
               >
                 <View style={styles.userMarker}>
                   <Image
-                    source={{ uri: user.images[0] }}
+                    source={{ uri: user.images?.[0] || 'https://via.placeholder.com/150' }}
                     style={styles.markerImage}
                   />
                   <View style={styles.markerHeart}>
@@ -81,11 +81,12 @@ const MapScreen = () => {
                   </View>
                 </View>
               </Marker>
-            ),
-        )}
-      </MapView>
+            );
+          })}
+        </MapView>
+      </View>
 
-      {/* Bottom Info Card */}
+      {/* Bottom Floating Information Panel */}
       <View style={styles.bottomCard}>
         <View style={styles.addressContainer}>
           <Icon name="location" size={20} color="#FF6B9D" />
@@ -100,23 +101,13 @@ const MapScreen = () => {
         </View>
       </View>
 
-      {/* Bottom Navigation Icons */}
+      {/* Bottom Menu Navigation Tray */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navIcon}>
-          <Icon name="flash" size={24} color="#000" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navIcon}>
-          <Icon name="camera" size={24} color="#000" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navIcon}>
-          <Icon name="globe" size={24} color="#FF6B9D" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navIcon}>
-          <Icon name="apps" size={24} color="#000" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navIcon}>
-          <Icon name="person" size={24} color="#000" />
-        </TouchableOpacity>
+        <TouchableOpacity style={styles.navIcon}><Icon name="flash" size={24} color="#000" /></TouchableOpacity>
+        <TouchableOpacity style={styles.navIcon}><Icon name="camera" size={24} color="#000" /></TouchableOpacity>
+        <TouchableOpacity style={styles.navIcon}><Icon name="globe" size={24} color="#FF6B9D" /></TouchableOpacity>
+        <TouchableOpacity style={styles.navIcon}><Icon name="apps" size={24} color="#000" /></TouchableOpacity>
+        <TouchableOpacity style={styles.navIcon}><Icon name="person" size={24} color="#000" /></TouchableOpacity>
       </View>
     </View>
   );
@@ -134,15 +125,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',
-    zIndex: 1,
+    zIndex: 10,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#000',
   },
-  map: {
+  mapContainer: {
     flex: 1,
+    position: 'relative',
   },
   currentUserMarker: {
     alignItems: 'center',
@@ -165,7 +157,6 @@ const styles = StyleSheet.create({
   userMarker: {
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
   markerImage: {
     width: 45,
@@ -188,7 +179,7 @@ const styles = StyleSheet.create({
   },
   bottomCard: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 90,
     left: 20,
     right: 20,
     backgroundColor: '#FFF',
@@ -199,6 +190,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 5,
+    zIndex: 5,
   },
   addressContainer: {
     flexDirection: 'row',
@@ -232,7 +224,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: '#EEE',
-    paddingBottom: 20,
+    paddingBottom: 24,
+    zIndex: 5,
   },
   navIcon: {
     padding: 8,

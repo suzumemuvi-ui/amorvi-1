@@ -8,6 +8,11 @@ export interface User {
   followers?: number;
   following?: number;
   likes?: number;
+  city?: string;
+  jobTitle?: string;
+  education?: string;
+  interests?: string[];
+  additionalInfo?: string[];
   location?: {
     latitude: number;
     longitude: number;

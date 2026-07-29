@@ -55,7 +55,7 @@ const TabNavigator = () => {
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => (
-            <Icon name="home" size={size} color={color} />
+            <Icon name="map-outline" size={size} color={color} />
           ),
         }}
       />
