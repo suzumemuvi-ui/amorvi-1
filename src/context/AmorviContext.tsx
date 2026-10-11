@@ -12,20 +12,20 @@ import { chatMachine } from '../machines/chatMachine';
 
 interface AmorviContextType {
   // Auth Machine
-  authActor: ReturnType<typeof useMachine>[1];
-  authState: ReturnType<typeof useMachine>[0];
+  authActor: (event: any) => void;
+  authState: any;
   
   // User Machine
-  userActor: ReturnType<typeof useMachine>[1];
-  userState: ReturnType<typeof useMachine>[0];
+  userActor: (event: any) => void;
+  userState: any;
   
   // Map Machine
-  mapActor: ReturnType<typeof useMachine>[1];
-  mapState: ReturnType<typeof useMachine>[0];
+  mapActor: (event: any) => void;
+  mapState: any;
   
   // Chat Machine
-  chatActor: ReturnType<typeof useMachine>[1];
-  chatState: ReturnType<typeof useMachine>[0];
+  chatActor: (event: any) => void;
+  chatState: any;
 }
 
 const AmorviContext = createContext<AmorviContextType | undefined>(undefined);
@@ -131,7 +131,7 @@ export function useAuth() {
   const { authState, authActor } = useAmorvi();
   return {
     state: authState,
-    send: authActor.send,
+    send: authActor,
     context: authState.context,
     matches: (state: string) => authState.matches(state),
   };
@@ -141,7 +141,7 @@ export function useUser() {
   const { userState, userActor } = useAmorvi();
   return {
     state: userState,
-    send: userActor.send,
+    send: userActor,
     context: userState.context,
     matches: (state: string) => userState.matches(state),
   };
@@ -151,7 +151,7 @@ export function useMap() {
   const { mapState, mapActor } = useAmorvi();
   return {
     state: mapState,
-    send: mapActor.send,
+    send: mapActor,
     context: mapState.context,
     matches: (state: string) => mapState.matches(state),
   };
@@ -161,7 +161,7 @@ export function useChat() {
   const { chatState, chatActor } = useAmorvi();
   return {
     state: chatState,
-    send: chatActor.send,
+    send: chatActor,
     context: chatState.context,
     matches: (state: string) => chatState.matches(state),
   };

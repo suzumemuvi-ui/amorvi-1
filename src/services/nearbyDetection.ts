@@ -188,11 +188,12 @@ const mockUsersDatabase: Array<{
   name: string;
   latitude: number;
   longitude: number;
+  age: number;
 }> = [
-  { id: '2', name: 'Alex', latitude: 37.78825, longitude: -122.4324 },
-  { id: '3', name: 'Sarah', latitude: 37.78925, longitude: -122.4334 },
-  { id: '4', name: 'Michael', latitude: 37.78725, longitude: -122.4314 },
-  { id: '5', name: 'Emma', latitude: 37.78625, longitude: -122.4344 },
+  { id: '2', name: 'Alex', latitude: 37.78825, longitude: -122.4324, age: 26 },
+  { id: '3', name: 'Sarah', latitude: 37.78925, longitude: -122.4334, age: 24 },
+  { id: '4', name: 'Michael', latitude: 37.78725, longitude: -122.4314, age: 29 },
+  { id: '5', name: 'Emma', latitude: 37.78625, longitude: -122.4344, age: 27 },
 ];
 
 // Find nearby users within a certain radius

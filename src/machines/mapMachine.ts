@@ -72,7 +72,7 @@ export const mapMachine = setup({
     isRadarEnabled: ({ context }: { context: MapContext }) =>
       context.radarEnabled,
   },
-}).createMachine({
+} as any).createMachine({
   id: 'map',
   initial: 'idle',
   context: {
@@ -130,4 +130,4 @@ export const mapMachine = setup({
       },
     },
   },
-});
+} as any);

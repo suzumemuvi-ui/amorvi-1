@@ -2,105 +2,42 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Ionicons';
-import HomeScreen from '../screens/HomeScreen';
-import RadarScreen from '../screens/RadarScreen';
-import DatingScreen from '../screens/DatingScreen';
-import ProfileScreen from '../screens/ProfileScreen';
-import EditProfileScreen from '../screens/EditProfileScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import AccountScreen from '../screens/AccountScreen';
-import ChatMessagesScreen from '../screens/ChatMessagesScreen';
+import { AmorviScreen, ChatsScreen, ConnectionsScreen, ConversationScreen, EditProfileScreen, HomeDesignScreen, LikesScreen, ProfileScreen, RadarScreen } from '../screens/DesignScreens';
+import { useTheme } from '../context/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const ProfileStackNavigator = () => {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
-      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="Account" component={AccountScreen} />
-    </Stack.Navigator>
-  );
-};
+function ProfileStack() {
+  return <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="ProfileMain" component={ProfileScreen}/>
+    <Stack.Screen name="EditProfile" component={EditProfileScreen}/>
+    <Stack.Screen name="Likes" component={LikesScreen}/>
+    <Stack.Screen name="Connections" component={ConnectionsScreen}/>
+  </Stack.Navigator>;
+}
 
-const TabNavigator = () => {
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#000',
-          borderTopWidth: 0,
-          height: 75,
-          paddingBottom: 8,
-        },
-        tabBarActiveTintColor: '#FF6B9D',
-        tabBarInactiveTintColor: '#888',
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-          marginTop: 4,
-        },
-      }}
-    >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          tabBarLabel: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="map-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Swipe"
-        component={DatingScreen}
-        options={{
-          tabBarLabel: 'Amorea',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="flame" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Radar"
-        component={RadarScreen}
-        options={{
-          tabBarLabel: 'Radar',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="radio-button-on" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Chats"
-        component={ChatMessagesScreen}
-        options={{
-          tabBarLabel: 'Chats',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="chatbubble" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileStackNavigator}
-        options={{
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="person" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tab.Navigator>
-  );
-};
+function HomeStack() {
+  return <Stack.Navigator screenOptions={{ headerShown: false }}><Stack.Screen name="HomeMain" component={HomeDesignScreen}/></Stack.Navigator>;
+}
 
-export default TabNavigator;
+function ChatStack() {
+  return <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="ChatList" component={ChatsScreen}/>
+    <Stack.Screen name="Conversation" component={ConversationScreen}/>
+  </Stack.Navigator>;
+}
+
+export default function TabNavigator() {
+  const { dark } = useTheme();
+  const bg = dark ? '#07131d' : '#ffffff';
+  const inactive = dark ? '#d0d6de' : '#28415e';
+  const icon = (name: string) => ({ color, size }: any) => <Icon name={name} size={size} color={color}/>;
+  return <Tab.Navigator screenOptions={{ headerShown:false, tabBarStyle:{ backgroundColor:bg, borderTopColor:dark?'#223342':'#e8ebef', height:67, paddingTop:5 }, tabBarActiveTintColor:'#ff075b', tabBarInactiveTintColor:inactive, tabBarLabelStyle:{fontSize:11,fontWeight:'600'} }}>
+    <Tab.Screen name="Home" component={HomeStack} options={{tabBarIcon:icon('home-outline')}}/>
+    <Tab.Screen name="Amorvi" component={AmorviScreen} options={{tabBarIcon:icon('flame-outline')}}/>
+    <Tab.Screen name="Radar" component={RadarScreen} options={{tabBarIcon:icon('radio-button-on-outline')}}/>
+    <Tab.Screen name="Chats" component={ChatStack} options={{tabBarIcon:icon('chatbubble-outline'), tabBarBadge:'3', tabBarBadgeStyle:{backgroundColor:'#ff075b',color:'#fff',fontSize:10}}}/>
+    <Tab.Screen name="Profile" component={ProfileStack} options={{tabBarIcon:icon('person-outline')}}/>
+  </Tab.Navigator>;
+}

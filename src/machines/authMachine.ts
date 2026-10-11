@@ -75,7 +75,7 @@ export const authMachine = setup({
     canAttemptLogin: ({ context }: { context: AuthContext }) =>
       context.attempt < 5,
   },
-}).createMachine({
+} as any).createMachine({
   id: 'auth',
   initial: 'login',
   context: {
@@ -201,4 +201,4 @@ export const authMachine = setup({
       },
     },
   },
-});
+} as any);

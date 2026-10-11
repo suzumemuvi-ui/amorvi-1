@@ -11,6 +11,7 @@ import {
   Alert,
   PermissionsAndroid,
   Platform,
+  ActionSheetIOS,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -20,11 +21,13 @@ import { AddStoryModal } from '../components/AddStoryModal';
 import { StoryViewer } from '../components/StoryViewer';
 import { ChangeProfilePictureModal } from '../components/ChangeProfilePictureModal';
 import { AlbumItemViewer } from '../components/AlbumItemViewer';
+import { usePost } from '../context/PostContextV2';
 
 const { width } = Dimensions.get('window');
 const imageSize = (width - 60) / 3;
 
 const ProfileScreen = ({ navigation }: { navigation?: any }) => {
+  const { deletePost } = usePost();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
@@ -114,6 +117,42 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
   }) => {
     setSelectedAlbumItem(item);
     setShowAlbumViewer(true);
+  };
+
+  const handleDeleteAlbumItem = (index: number) => {
+    Alert.alert(
+      'Delete Item',
+      'Are you sure you want to delete this item from your album?',
+      [
+        { text: 'Cancel', onPress: () => {}, style: 'cancel' },
+        {
+          text: 'Delete',
+          onPress: () => {
+            setAlbumItems(albumItems.filter((_, i) => i !== index));
+            Alert.alert('Success', 'Item deleted from album!');
+          },
+          style: 'destructive',
+        },
+      ],
+    );
+  };
+
+  const handleDeleteStory = () => {
+    Alert.alert(
+      'Delete Story',
+      'Are you sure you want to delete your story?',
+      [
+        { text: 'Cancel', onPress: () => {}, style: 'cancel' },
+        {
+          text: 'Delete',
+          onPress: () => {
+            setStory(null);
+            Alert.alert('Success', 'Story deleted!');
+          },
+          style: 'destructive',
+        },
+      ],
+    );
   };
 
   const handleSaveProfile = (data: {
@@ -332,18 +371,25 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
 
           <View style={styles.albumsGrid}>
             {albumItems.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.albumItem}
-                onPress={() => handleViewAlbumItem(item)}
-              >
-                <Image source={{ uri: item.uri }} style={styles.albumImage} />
-                {item.type === 'video' && (
-                  <View style={styles.albumOverlay}>
-                    <Icon name="play" size={30} color="#FFF" />
-                  </View>
-                )}
-              </TouchableOpacity>
+              <View key={index} style={{ position: 'relative' }}>
+                <TouchableOpacity
+                  style={styles.albumItem}
+                  onPress={() => handleViewAlbumItem(item)}
+                >
+                  <Image source={{ uri: item.uri }} style={styles.albumImage} />
+                  {item.type === 'video' && (
+                    <View style={styles.albumOverlay}>
+                      <Icon name="play" size={30} color="#FFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteAlbumItemButton}
+                  onPress={() => handleDeleteAlbumItem(index)}
+                >
+                  <Icon name="trash-outline" size={16} color="#FF6B9D" />
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
         </View>
@@ -404,6 +450,8 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
           story={story}
           userName={userData.name}
           userAge={userData.age}
+          isOwnStory={true}
+          onDelete={handleDeleteStory}
         />
       )}
     </View>
@@ -681,6 +729,22 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  deleteAlbumItemButton: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: '#FFF',
+    borderRadius: 50,
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   albumViews: {
     color: '#FFF',

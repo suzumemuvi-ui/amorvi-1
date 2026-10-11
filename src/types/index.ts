@@ -40,3 +40,20 @@ export interface NearbyUser {
   distance: number;
   age: number;
 }
+
+export interface FeedComment {
+  id: string;
+  author: string;
+  text: string;
+}
+
+export interface FeedPost {
+  id: string;
+  user: User;
+  text: string;
+  mediaUrl: string;
+  mediaType: 'photo' | 'video';
+  likes: number;
+  likedByCurrentUser: boolean;
+  comments: FeedComment[];
+}

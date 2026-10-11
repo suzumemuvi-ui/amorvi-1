@@ -69,7 +69,7 @@ export const userMachine = setup({
       loading: false,
     }),
   },
-}).createMachine({
+} as any).createMachine({
   id: 'user',
   initial: 'idle',
   context: {
@@ -136,4 +136,4 @@ export const userMachine = setup({
       },
     },
   },
-});
+} as any);

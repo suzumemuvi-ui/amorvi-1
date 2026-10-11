@@ -56,6 +56,26 @@ const sara = {
 
 await writeDatabase({
   users: [emily, alex, sara],
+  posts: [
+    {
+      id: createId(),
+      userId: alex.id,
+      images: ['https://picsum.photos/800/1000?random=10'],
+      caption: 'Adventure day near the river.',
+      createdAt: now,
+    },
+    {
+      id: createId(),
+      userId: sara.id,
+      images: ['https://picsum.photos/800/1000?random=20'],
+      caption: 'Coffee and city lights.',
+      createdAt: now,
+    },
+  ],
+  postLikes: [],
+  postComments: [],
+  interested: [],
+  likes: [],
   matches: [
     {
       id: createId(),
@@ -65,6 +85,7 @@ await writeDatabase({
       createdAt: now,
     },
   ],
+  connections: [],
   messages: [
     {
       id: createId(),

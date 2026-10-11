@@ -12,11 +12,13 @@ import {
   Alert,
   PermissionsAndroid,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import { currentUser } from '../data/mockData';
 import ImagePicker, { ImageLibraryOptions, ImagePickerResponse } from 'react-native-image-picker';
+import { useAuth } from '../context/AuthContextV2';
 
 const { width } = Dimensions.get('window');
 const imagePickerOptions: ImageLibraryOptions = {
@@ -37,7 +39,9 @@ interface UserEditData {
 }
 
 const EditProfileScreen = ({ navigation }: { navigation?: any }) => {
+  const { updateProfile, user } = useAuth();
   const [profileImage, setProfileImage] = useState(currentUser.images[0]);
+  const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState<UserEditData>({
     firstName: currentUser.name,
     age: currentUser.age.toString(),
@@ -92,9 +96,28 @@ const EditProfileScreen = ({ navigation }: { navigation?: any }) => {
     }));
   };
 
-  const handleSave = () => {
-    Alert.alert('Success', 'Profile updated successfully!');
-    navigation?.goBack();
+  const handleSave = async () => {
+    if (!userData.firstName.trim()) {
+      Alert.alert('Error', 'Name is required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await updateProfile({
+        name: userData.firstName.trim(),
+        age: parseInt(userData.age),
+        bio: userData.about,
+        interests: userData.interests,
+      });
+      
+      Alert.alert('Success', 'Profile updated successfully!');
+      navigation?.goBack();
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -107,8 +130,12 @@ const EditProfileScreen = ({ navigation }: { navigation?: any }) => {
           <Icon name="chevron-back" size={28} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSave}>
-          <Text style={styles.doneButton}>Done</Text>
+        <TouchableOpacity onPress={handleSave} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator size="small" color="#FF6B9D" />
+          ) : (
+            <Text style={styles.doneButton}>Done</Text>
+          )}
         </TouchableOpacity>
       </View>
 

@@ -16,13 +16,13 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { apiRequest, AuthResponse } from '../services/api';
 import { GOOGLE_WEB_CLIENT_ID } from '../config/auth';
 import {
   configureGoogleSignin,
   getGoogleSignin,
   getGoogleStatusCodes,
 } from '../services/googleSignIn';
+import { useAuth } from '../context/AuthContextV2';
 
 const { height } = Dimensions.get('window');
 const monthNames = [
@@ -62,6 +62,7 @@ const formatDateOfBirth = (date: Date) => {
 };
 
 const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess?: () => void }) => {
+  const auth = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [signUpStep, setSignUpStep] = useState<'account' | 'profile'>(
     'account',
@@ -146,11 +147,38 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess?: () => void }) => {
   };
 
   const handleAuthAction = async () => {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim() || !emailRegex.test(email.trim())) {
+      Alert.alert(
+        'Invalid email',
+        'Please enter a valid email address.',
+      );
+      return;
+    }
+
+    // Validate password
+    if (!password.trim()) {
+      Alert.alert(
+        'Empty password',
+        'Please enter a password.',
+      );
+      return;
+    }
+
     if (isSignUp && signUpStep === 'account') {
       if (!name.trim() || !dateOfBirth.trim()) {
         Alert.alert(
           'Complete your account',
           'Add your full name and date of birth before continuing.',
+        );
+        return;
+      }
+
+      if (password.length < 8) {
+        Alert.alert(
+          'Weak password',
+          'Password must be at least 8 characters long.',
         );
         return;
       }
@@ -185,12 +213,45 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess?: () => void }) => {
       }
     }
 
-    setLoading(true);
-    // Simulate authentication
-    setTimeout(() => {
-      setLoading(false);
+    const resolveAge = () => {
+      if (!selectedBirthDate) return 18;
+
+      const ageDate = new Date(
+        today.getTime() - selectedBirthDate.getTime(),
+      );
+      return Math.abs(ageDate.getUTCFullYear() - 1970);
+    };
+
+    try {
+      setLoading(true);
+
+      if (isSignUp) {
+        await auth.register(
+          email.trim(),
+          password,
+          name.trim(),
+          resolveAge(),
+        );
+      } else {
+        await auth.login(email.trim(), password);
+      }
+
       onAuthSuccess?.();
-    }, 1500);
+    } catch (error: any) {
+      Alert.alert(
+        isSignUp ? 'Sign up failed' : 'Sign in failed',
+        error?.message || 'Please try again.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const useDemoAccount = () => {
+    setEmail('emily@amorvi.test');
+    setPassword('password123');
+    setIsSignUp(false);
+    setSignUpStep('account');
   };
 
   const handleGoogleSignIn = async () => {
@@ -228,10 +289,7 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess?: () => void }) => {
         throw new Error('Google did not return an ID token.');
       }
 
-      await apiRequest<AuthResponse>('/auth/google', {
-        method: 'POST',
-        body: JSON.stringify({ idToken }),
-      });
+      await auth.loginWithGoogle(idToken);
 
       onAuthSuccess?.();
     } catch (error: any) {
@@ -585,6 +643,17 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess?: () => void }) => {
                 </LinearGradient>
               </TouchableOpacity>
 
+              {!isSignUp && (
+                <TouchableOpacity
+                  style={styles.demoAccountButton}
+                  onPress={useDemoAccount}
+                  disabled={loading}
+                >
+                  <Icon name="person-outline" size={17} color="#FFF" />
+                  <Text style={styles.demoAccountText}>Use demo account</Text>
+                </TouchableOpacity>
+              )}
+
               {isSignUp && signUpStep === 'profile' && (
                 <TouchableOpacity
                   style={styles.backToSignupButton}
@@ -873,6 +942,24 @@ const styles = StyleSheet.create({
   authButtonText: {
     color: '#FFF',
     fontSize: 18,
+    fontWeight: '700',
+  },
+  demoAccountButton: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: -9,
+    marginBottom: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.58)',
+  },
+  demoAccountText: {
+    color: '#FFF',
+    fontSize: 13,
     fontWeight: '700',
   },
   backToSignupButton: {

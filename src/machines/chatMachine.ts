@@ -89,7 +89,7 @@ export const chatMachine = setup({
     hasConversation: ({ context }: { context: ChatContext }) =>
       context.currentConversationId !== null,
   },
-}).createMachine({
+} as any).createMachine({
   id: 'chat',
   initial: 'idle',
   context: {
@@ -154,4 +154,4 @@ export const chatMachine = setup({
       },
     },
   },
-});
+} as any);

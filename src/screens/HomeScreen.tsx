@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,426 +6,520 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
-  Dimensions,
-  Modal,
   ScrollView,
+  Image,
+  SafeAreaView,
+  Modal,
   TextInput,
+  Animated,
+  Easing,
 } from 'react-native';
-
 import Icon from 'react-native-vector-icons/Ionicons';
+import { addInterestedProfile } from '../data/amorviRelationshipState';
+import { FeedPost, User } from '../types';
 
-const { width, height } = Dimensions.get('window');
+const homeFeedSeed: FeedPost[] = [
+  {
+    id: 'post-1',
+    user: {
+      id: 'p1',
+      name: 'Emily',
+      age: 24,
+      bio: 'Travel • Coffee • Photography',
+      images: ['https://picsum.photos/800/1000?random=101'],
+      distance: 1.4,
+      city: 'Downtown',
+      interests: ['Travel', 'Coffee', 'Photography'],
+    },
+    text: 'Sunrise walk + espresso before the day starts. ☕️',
+    mediaUrl: 'https://picsum.photos/800/1000?random=101',
+    mediaType: 'photo',
+    likes: 236,
+    likedByCurrentUser: false,
+    comments: [{ id: 'c1', author: 'Mia', text: 'This is gorgeous 😍' }],
+  },
+  {
+    id: 'post-2',
+    user: {
+      id: 'p2',
+      name: 'Noah',
+      age: 27,
+      bio: 'Weekend adventures and good playlists',
+      images: ['https://picsum.photos/800/1000?random=202'],
+      distance: 1.8,
+      city: 'Old Town',
+      interests: ['Hiking', 'Music', 'Travel'],
+    },
+    text: 'That view was worth the climb. Perfect spot for a quick reset.',
+    mediaUrl: 'https://picsum.photos/800/1000?random=202',
+    mediaType: 'photo',
+    likes: 412,
+    likedByCurrentUser: true,
+    comments: [{ id: 'c2', author: 'Lina', text: 'This should be on a postcard' }],
+  },
+  {
+    id: 'post-3',
+    user: {
+      id: 'p3',
+      name: 'Ava',
+      age: 25,
+      bio: 'Street food and city nights',
+      images: ['https://picsum.photos/800/1000?random=303'],
+      distance: 2.1,
+      city: 'Riverfront',
+      interests: ['Food', 'Nightlife', 'Design'],
+    },
+    text: 'Quick reel from tonight’s walk-around. Best city lights are the quiet ones.',
+    mediaUrl: 'https://picsum.photos/800/1000?random=303',
+    mediaType: 'video',
+    likes: 189,
+    likedByCurrentUser: false,
+    comments: [{ id: 'c3', author: 'Sam', text: 'Mood' }],
+  },
+];
 
-const HomeScreen = () => {
-  const [aMomentsMode, setAMomentsMode] = useState<'photo' | 'video' | 'post' | null>(null);
-  const [postText, setPostText] = useState('');
-  const [feedVisible, setFeedVisible] = useState(false);
-  const [feedItems, setFeedItems] = useState<Array<{id: string; text: string; createdAt: string}>>([]);
-  const showFeed = feedVisible || feedItems.length > 0;
+const HomeScreen = ({ navigation }: { navigation?: any }) => {
+  const [posts, setPosts] = useState<FeedPost[]>(homeFeedSeed);
+  const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
+  const [commentDraft, setCommentDraft] = useState('');
+  const likeAnimations = useRef<{ [key: string]: Animated.Value }>({});
+  const commentModalScale = useRef(new Animated.Value(0)).current;
 
-  const shareAMoment = (type: 'photo' | 'video') => {
-    setAMomentsMode(type);
-  };
+  const handleLike = (postId: string) => {
+    if (!likeAnimations.current[postId]) {
+      likeAnimations.current[postId] = new Animated.Value(1);
+    }
 
-  const writePost = () => {
-    setAMomentsMode('post');
-  };
+    Animated.sequence([
+      Animated.timing(likeAnimations.current[postId], {
+        toValue: 1.2,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(likeAnimations.current[postId], {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-  const closeModal = () => {
-    setAMomentsMode(null);
-    setPostText('');
-  };
+    setPosts(prev =>
+      prev.map(post => {
+        if (post.id !== postId) {
+          return post;
+        }
 
-  const handleMediaShare = (source: 'gallery' | 'camera') => {
-    Alert.alert(
-      'AMoment Shared',
-      `Your ${aMomentsMode === 'photo' ? 'photo' : 'video'} from ${source === 'gallery' ? 'gallery' : 'camera'} is ready!`,
+        const likedByCurrentUser = !post.likedByCurrentUser;
+
+        return {
+          ...post,
+          likedByCurrentUser,
+          likes: Math.max(0, post.likes + (likedByCurrentUser ? 1 : -1)),
+        };
+      }),
     );
-    closeModal();
   };
 
-  const handlePostShare = () => {
-    if (!postText.trim()) {
-      Alert.alert('Write something first', 'Please type your post before sharing.');
+  const handleComment = (post: FeedPost) => {
+    setActiveCommentPostId(post.id);
+    setCommentDraft('');
+    commentModalScale.setValue(0);
+    Animated.spring(commentModalScale, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const submitComment = () => {
+    if (!activeCommentPostId || !commentDraft.trim()) {
       return;
     }
 
-    const newFeedItem = {
-      id: Date.now().toString(),
-      text: postText.trim(),
-      createdAt: new Date().toLocaleString(),
-    };
+    setPosts(prev =>
+      prev.map(post => {
+        if (post.id !== activeCommentPostId) {
+          return post;
+        }
 
-    setFeedItems(prev => [newFeedItem, ...prev]);
-    setFeedVisible(true);
-    closeModal();
+        return {
+          ...post,
+          comments: [
+            ...post.comments,
+            {
+              id: `${activeCommentPostId}-comment-${Date.now()}`,
+              author: 'You',
+              text: commentDraft.trim(),
+            },
+          ],
+        };
+      }),
+    );
+
+    setCommentDraft('');
+    setActiveCommentPostId(null);
+    Animated.timing(commentModalScale, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleInterested = (user: User) => {
+    addInterestedProfile({
+      id: user.id,
+      name: user.name,
+      age: user.age,
+      bio: user.bio ?? 'Nearby match',
+      images: user.images ?? [],
+      city: user.city ?? 'Nearby',
+      distance: user.distance ?? 1.4,
+      interests: user.interests ?? ['Travel'],
+    });
+
+    Alert.alert('Added to Interested', `${user.name} is now in your Amorvi shortlist.`);
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" hidden />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
 
-      {/* OVERLAY UI */}
-      <View style={styles.overlay}>
-        <View style={styles.topBar}>
-          <TouchableOpacity>
-            <Icon name="flash" size={26} color="#fff" />
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerLabel}>Nearby</Text>
+          <Text style={styles.headerTitle}>Discover</Text>
+        </View>
+        <View style={styles.headerActions}>
+          <View style={styles.headerBadge}>
+            <Icon name="add" size={20} color="#FFF" />
+          </View>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => navigation?.navigate('Notifications')}
+            activeOpacity={0.85}
+          >
+            <Icon name="notifications" size={20} color="#FFF" />
+            <View style={styles.notificationDot}>
+              <Text style={styles.notificationDotText}>8</Text>
+            </View>
           </TouchableOpacity>
-
-          <View style={styles.topBarRight}>
-            <TouchableOpacity
-              style={styles.topActionButton}
-              onPress={() => shareAMoment('photo')}
-            >
-              <Icon name="image-outline" size={20} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.topActionButton}
-              onPress={() => shareAMoment('video')}
-            >
-              <Icon name="videocam-outline" size={20} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.topActionButton}
-              onPress={writePost}
-            >
-              <Icon name="newspaper-outline" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
         </View>
-        <View style={styles.actionHint}>
-          <Text style={styles.aMomentsTitle}>AMoments</Text>
-          <Text style={styles.aMomentsSubtitle}>
-            Use the top-right icons to share a photo, video, or quick post.
-          </Text>
-        </View>
-        {showFeed && (
-          <View style={styles.feedContainer}>
-            <Text style={styles.feedTitle}>Your AMoments Feed</Text>
-            <Text style={styles.feedSubtitle}>Latest posts appear here.</Text>
-            <ScrollView contentContainerStyle={styles.feedScroll}>
-              {feedItems.length === 0 ? (
-                <Text style={styles.feedEmpty}>No posts yet. Write an AMoment first.</Text>
-              ) : (
-                feedItems.map(item => (
-                  <View key={item.id} style={styles.feedItem}>
-                    <Text style={styles.feedItemText}>{item.text}</Text>
-                    <Text style={styles.feedItemTime}>{item.createdAt}</Text>
-                  </View>
-                ))
-              )}
-            </ScrollView>
-          </View>
-        )}
+      </View>
 
-        <Modal visible={Boolean(aMomentsMode)} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>
-                {aMomentsMode === 'post'
-                  ? 'Write an AMoment'
-                  : aMomentsMode === 'photo'
-                  ? 'Share a Photo'
-                  : 'Share a Video'}
-              </Text>
+      <ScrollView contentContainerStyle={styles.feedContent} showsVerticalScrollIndicator={false}>
+        {posts.map(post => (
+          <View key={post.id} style={styles.postCard}>
+            <View style={styles.postHeader}>
+              <Image source={{ uri: post.user.images[0] }} style={styles.avatar} />
 
-              {aMomentsMode === 'post' ? (
-                <>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="Write what you're sharing..."
-                    placeholderTextColor="#999"
-                    value={postText}
-                    onChangeText={setPostText}
-                    multiline
+              <View style={styles.userMeta}>
+                <Text style={styles.userName}>
+                  {post.user.name}, {post.user.age}
+                </Text>
+                <Text style={styles.userDistance}>{post.user.city ?? 'Nearby'} • {post.user.distance ?? 1.4} km</Text>
+              </View>
+
+              <TouchableOpacity style={styles.interestedButton} onPress={() => handleInterested(post.user)}>
+                <Text style={styles.interestedButtonText}>💗 Interested</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.postText}>{post.text}</Text>
+
+            <Image source={{ uri: post.mediaUrl }} style={styles.media} resizeMode="cover" />
+
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(post.id)}>
+                <Animated.View
+                  style={{
+                    transform: [{ scale: likeAnimations.current[post.id] || new Animated.Value(1) }],
+                  }}
+                >
+                  <Icon
+                    name={post.likedByCurrentUser ? 'heart' : 'heart-outline'}
+                    size={22}
+                    color={post.likedByCurrentUser ? '#FF4D8D' : '#fff'}
                   />
-                  <View style={styles.modalActions}>
-                    <TouchableOpacity
-                      style={[styles.modalActionButton, styles.cancelButton]}
-                      onPress={closeModal}
-                    >
-                      <Text style={styles.modalActionText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.modalActionButton, styles.shareButton]}
-                      onPress={handlePostShare}
-                    >
-                      <Text style={styles.modalActionText}>Share</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.modalText}>
-                    Choose a source to attach your {aMomentsMode}.
-                  </Text>
-                  <View style={styles.modalActions}>
-                    <TouchableOpacity
-                      style={[styles.modalActionButton, styles.shareButton]}
-                      onPress={() => handleMediaShare('gallery')}
-                    >
-                      <Text style={styles.modalActionText}>Gallery</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.modalActionButton, styles.cancelButton]}
-                      onPress={() => handleMediaShare('camera')}
-                    >
-                      <Text style={styles.modalActionText}>Camera</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.modalClose}
-                    onPress={closeModal}
-                  >
-                    <Text style={styles.modalCloseText}>Cancel</Text>
-                  </TouchableOpacity>
-                </>
-              )}
+                </Animated.View>
+                <Text style={styles.actionText}>{post.likes}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.actionButton} onPress={() => handleComment(post)}>
+                <Icon name="chatbubble-outline" size={20} color="#fff" />
+                <Text style={styles.actionText}>{post.comments.length}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.commentBox}>
+              <Text style={styles.commentAuthor}>{post.comments[0]?.author ?? 'Amorvi'}:</Text>
+              <Text style={styles.commentText}> {post.comments[0]?.text ?? 'Looks amazing.'}</Text>
             </View>
           </View>
+        ))}
+      </ScrollView>
+
+      {activeCommentPostId && (
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={!!activeCommentPostId}
+          onRequestClose={() => setActiveCommentPostId(null)}
+        >
+          <View style={styles.modalContainer}>
+            <Animated.View
+              style={[
+                styles.modalContent,
+                {
+                  transform: [{ scale: commentModalScale }],
+                  opacity: commentModalScale,
+                },
+              ]}
+            >
+              <Text style={styles.modalTitle}>Leave a Comment</Text>
+
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Write a comment..."
+                placeholderTextColor="#999"
+                value={commentDraft}
+                onChangeText={setCommentDraft}
+                multiline
+              />
+
+              <TouchableOpacity style={styles.submitButton} onPress={submitComment}>
+                <Text style={styles.submitButtonText}>Post Comment</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.closeButton} onPress={() => setActiveCommentPostId(null)}>
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
         </Modal>
-      </View>
-    </View>
+      )}
+    </SafeAreaView>
   );
 };
-
-export default HomeScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: '#0E0E12',
   },
-
-  center: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-  },
-
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  header: {
+    paddingTop: StatusBar.currentHeight,
+    paddingBottom: 16,
     paddingHorizontal: 20,
-    paddingTop: 60,
-  },
-
-  guideBox: {
-    alignSelf: 'center',
-    width: width * 0.6,
-    height: width * 0.8,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-    marginTop: 80,
-  },
-
-  bottomBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingBottom: 40,
-  },
-
-  captureButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 5,
-    borderColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  captureInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#fff',
-  },
-  actionHint: {
-    marginHorizontal: 20,
-    marginTop: 30,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 24,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-  },
-  aMomentsTitle: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  aMomentsSubtitle: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  aMomentsActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  aMomentsButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 16,
-    marginHorizontal: 4,
-    gap: 8,
-  },
-  topBarRight: {
-    flexDirection: 'row',
     alignItems: 'center',
   },
-  topActionButton: {
+  headerLabel: {
+    color: '#FF9DBF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  headerBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
     width: 40,
     height: 40,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
-  },
-  buttonText: {
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContainer: {
-    width: '100%',
-    backgroundColor: '#121212',
-    borderRadius: 24,
-    padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: '#FF2F7D',
   },
-  modalTitle: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  modalText: {
-    color: '#CCC',
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  modalInput: {
-    minHeight: 120,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    padding: 14,
-    color: '#FFF',
-    textAlignVertical: 'top',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    marginBottom: 16,
-  },
-  modalActions: {
+  headerActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
     gap: 10,
   },
-  modalActionButton: {
-    flex: 1,
-    borderRadius: 16,
-    paddingVertical: 12,
+  notificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#2b2b2b',
-  },
-  shareButton: {
-    backgroundColor: '#FF6B9D',
-  },
-  modalActionText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  modalClose: {
-    marginTop: 14,
-    alignSelf: 'center',
-  },
-  modalCloseText: {
-    color: '#FF6B9D',
-    fontSize: 14,
-  },
-  photoButton: {
-    backgroundColor: '#FF6B9D',
-  },
-  videoButton: {
-    backgroundColor: '#8D33FF',
-  },
-  writeButton: {
-    backgroundColor: '#FFB300',
-  },
-  aMomentsButtonText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  feedContainer: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    padding: 16,
-    marginHorizontal: 20,
-    marginBottom: 40,
-  },
-  feedTitle: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  feedSubtitle: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
-    marginBottom: 16,
-  },
-  feedScroll: {
-    paddingBottom: 16,
-  },
-  feedEmpty: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 24,
-  },
-  feedItem: {
+    justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,47,125,0.6)',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FF2F7D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationDotText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  feedContent: {
+    paddingBottom: 80,
+  },
+  postCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 18,
     padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  postHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
-  feedItemText: {
-    color: '#FFF',
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  userMeta: {
+    flex: 1,
+  },
+  userName: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  userDistance: {
+    color: '#cfcfcf',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  interestedButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 99, 162, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 117, 177, 0.4)',
+  },
+  interestedButtonText: {
+    color: '#FF9DBF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  postText: {
+    color: '#f2f2f2',
     fontSize: 15,
     lineHeight: 22,
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  feedItemTime: {
-    color: 'rgba(255,255,255,0.65)',
+  media: {
+    width: '100%',
+    height: 360,
+    borderRadius: 18,
+    marginBottom: 12,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+  },
+  actionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  commentBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  commentAuthor: {
+    color: '#FF9DBF',
+    fontWeight: '700',
     fontSize: 12,
   },
+  commentText: {
+    color: '#efefef',
+    fontSize: 12,
+    flexShrink: 1,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  },
+  modalContent: {
+    width: '90%',
+    backgroundColor: '#1e1e1e',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  commentInput: {
+    width: '100%',
+    maxHeight: 120,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    color: '#fff',
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  submitButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#FF4D8D',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  closeButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });
+
+export default HomeScreen;

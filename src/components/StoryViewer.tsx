@@ -8,6 +8,7 @@ import {
   Image,
   Dimensions,
   StatusBar,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
@@ -19,6 +20,8 @@ interface StoryViewerProps {
   story: { uri: string; type: 'photo' | 'video'; timestamp: number };
   userName: string;
   userAge: number;
+  onDelete?: () => void;
+  isOwnStory?: boolean;
 }
 
 export const StoryViewer: React.FC<StoryViewerProps> = ({
@@ -27,6 +30,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   story,
   userName,
   userAge,
+  onDelete,
+  isOwnStory = true,
 }) => {
   const [progress, setProgress] = useState(0);
   const [timeAgo, setTimeAgo] = useState('');
@@ -127,9 +132,35 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
             </View>
           </View>
 
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Icon name="close" size={30} color="#FFF" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {isOwnStory && onDelete && (
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert(
+                    'Delete Story',
+                    'Are you sure you want to delete this story?',
+                    [
+                      { text: 'Cancel', onPress: () => {}, style: 'cancel' },
+                      {
+                        text: 'Delete',
+                        onPress: () => {
+                          onDelete();
+                          onClose();
+                        },
+                        style: 'destructive',
+                      },
+                    ],
+                  );
+                }}
+                style={styles.deleteButton}
+              >
+                <Icon name="trash-outline" size={24} color="#FFF" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Icon name="close" size={30} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Time Remaining Badge */}
@@ -218,6 +249,14 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     opacity: 0.8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  deleteButton: {
+    padding: 5,
   },
   closeButton: {
     padding: 5,

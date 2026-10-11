@@ -1,27 +1,87 @@
 # Love Alarm Dating App 💕
 
-A modern dating and social video-sharing app combining elements of TikTok, Snapchat, Tinder, and Love Alarm. Built with React Native.
+A modern dating and social video-sharing app combining elements of TikTok, Snapchat, Tinder, and Love Alarm. Built with React Native and XState for robust state management.
 
 ## Features
 
-- 📱 **Video Feed**: TikTok-style video browsing with swipe interactions
-- 💬 **Match & Chat**: Real-time messaging with your matches
-- 🗺️ **Location-based Discovery**: Find matches nearby on an interactive map
-- 👤 **Profile Management**: Customizable profiles with photo albums and stats
-- ❤️ **Smart Matching**: Like, comment, and connect with other users
+- **📱 Social Feed** - Like, comment, and bookmark posts from nearby users
+- **💘 Amorvi Matching** - Swipe through profiles in Discover/Interested/Friends tabs
+- **❤️ Mutual Matching** - Get notified with "It's a Match!" when both users like each other
+- **💬 Real-time Chat** - Message matches and friend connections instantly
+- **🗺️ Radar View** - Find matches nearby on an interactive map
+- **👤 Profile Management** - Customizable profiles with photos and interests
+- **🎨 Animations & Polish** - Smooth heart bounce effects, spring animations, dark theme UI
+
+## Architecture
+
+### Three-Layer Design
+
+**1. Social Feed (Home)**
+- TikTok-style posts from nearby users
+- Like ❤️ (social engagement, no romantic meaning)
+- Comment 💬 (add feedback to posts)
+- Interested 💗 (private bookmark in Amorvi tab)
+
+**2. Amorvi Matching (Dating)**
+- **Discover Tab**: Browse all available profiles
+- **Interested Tab**: View your private bookmarks from posts
+- **Friends Tab**: Manage friend requests and accepted connections
+- Like/Pass buttons trigger mutual like detection
+- Connect button initiates friend requests
+
+**3. Chats (Messaging)**
+- Active matches and accepted friend connections
+- Real-time message threads
+- User avatars and status indicators
+
+### State Management
+
+**Shared Relationship State** (`src/data/amorviRelationshipState.ts`):
+```typescript
+// Profile collections
+- interestedProfilesMap: Private bookmarks from Home posts
+- matchedUsersMap: Mutual matches with message history
+- friendConnectionsMap: Friend requests (pending/accepted status)
+
+// Like tracking
+- likedByMeSet: Profiles I've liked in Amorvi
+- mutualLikeSet: Profiles that both of us have liked
+```
+
+**Flow Logic**:
+```
+Home ❤️ Like → Just a social engagement
+Home 💗 Interested → Adds to Amorvi/Interested tab
+Amorvi ❤️ Like (on Interested) + hasMutualLike → "It's a Match!" → Chat
+Amorvi 💜 Connect → Adds to Friends as pending request
+Friends Accept → Status changes to 'accepted' → Can chat as friends
+```
 
 ## Tech Stack
 
-- **React Native** 0.83.1
-- **React Navigation** for routing
-- **React Native Maps** for location features
-- **React Native Gesture Handler** for smooth interactions
+- **React Native** 0.83.1 with TypeScript
+- **React Navigation** for routing and tab management
+- **XState v5** for state machine management
+- **React Native Animated API** for smooth animations
+- **React Native Linear Gradient** for UI effects
 - **React Native Vector Icons** for beautiful icons
-- **Linear Gradient** for stunning UI effects
+- **React Native Maps** for location features
 
 ## Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+
+### Start the API first
+
+Login and registration use the local Amorvi API. Keep this running in its own terminal before opening the app:
+
+```sh
+npm run backend
+```
+
+The API health endpoint should then return JSON at `http://localhost:4000/health`.
+
+The default connection addresses work for the iOS Simulator (`localhost`) and Android Emulator (`10.0.2.2`). For a physical phone, update `src/config/api.ts` to use your computer's LAN IP address (for example, `http://192.168.1.20:4000`) and ensure the phone and computer use the same Wi-Fi network.
 
 ## Step 1: Start Metro
 

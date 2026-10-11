@@ -6,44 +6,53 @@
  */
 
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import TabNavigator from './src/navigation/TabNavigator';
 import AuthScreen from './src/screens/AuthScreen';
 import {
-  AuthSessionProvider,
-  useAuthSession,
-} from './src/context/AuthSessionContext';
+  AuthProvider,
+  useAuth,
+} from './src/context/AuthContextV2';
+import { PostProvider } from './src/context/PostContextV2';
+import { ThemeProvider } from './src/context/ThemeContext';
 
 function AppContent() {
-  const { isAuthenticated, login } = useAuthSession();
+  const { user } = useAuth();
+
   return (
     <NavigationContainer>
-      {isAuthenticated ? (
-        <TabNavigator />
-      ) : (
-        <AuthScreen onAuthSuccess={login} />
-      )}
+      {user ? <TabNavigator /> : <AuthScreen />}
     </NavigationContainer>
   );
 }
 
 function App() {
   return (
-    <AuthSessionProvider>
-      <GestureHandlerRootView style={styles.container}>
-        <SafeAreaProvider>
-          <AppContent />
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </AuthSessionProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <PostProvider>
+          <GestureHandlerRootView style={styles.container}>
+            <SafeAreaProvider>
+              <SafeAreaView style={styles.safeArea} edges={['top']}>
+                <AppContent />
+              </SafeAreaView>
+            </SafeAreaProvider>
+          </GestureHandlerRootView>
+        </PostProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  safeArea: {
     flex: 1,
   },
 });

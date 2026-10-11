@@ -6,7 +6,12 @@ require Pod::Executable.execute_command('node', ['-p',
   )', __dir__]).strip
 
 platform :ios, min_ios_version_supported
+
 prepare_react_native_project!
+
+# Fix for Swift pods such as AppCheckCore
+# depending on GoogleUtilities / RecaptchaInterop
+use_modular_headers!
 
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
@@ -19,7 +24,6 @@ target 'love_alarm_app' do
 
   use_react_native!(
     :path => config[:reactNativePath],
-    # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 

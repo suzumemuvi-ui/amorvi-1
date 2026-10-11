@@ -27,6 +27,51 @@ export type Match = {
   createdAt: string;
 };
 
+export type Post = {
+  id: string;
+  userId: string;
+  images: string[];
+  caption: string;
+  createdAt: string;
+};
+
+export type PostLike = {
+  id: string;
+  userId: string;
+  postId: string;
+  createdAt: string;
+};
+
+export type PostComment = {
+  id: string;
+  userId: string;
+  postId: string;
+  content: string;
+  createdAt: string;
+};
+
+export type Interested = {
+  id: string;
+  userId: string;
+  targetUserId: string;
+  createdAt: string;
+};
+
+export type Like = {
+  id: string;
+  userAId: string;
+  userBId: string;
+  createdAt: string;
+};
+
+export type Connection = {
+  id: string;
+  userAId: string;
+  userBId: string;
+  status: 'pending' | 'accepted';
+  createdAt: string;
+};
+
 export type Message = {
   id: string;
   senderId: string;
@@ -38,7 +83,13 @@ export type Message = {
 
 export type Database = {
   users: User[];
+  posts: Post[];
+  postLikes: PostLike[];
+  postComments: PostComment[];
+  interested: Interested[];
+  likes: Like[];
   matches: Match[];
+  connections: Connection[];
   messages: Message[];
 };
 
@@ -46,7 +97,13 @@ const dataPath = path.resolve(process.cwd(), process.env.DATA_FILE ?? './data/de
 
 const emptyDatabase = (): Database => ({
   users: [],
+  posts: [],
+  postLikes: [],
+  postComments: [],
+  interested: [],
+  likes: [],
   matches: [],
+  connections: [],
   messages: [],
 });
 
