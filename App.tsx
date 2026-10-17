@@ -21,11 +21,15 @@ import { PostProvider } from './src/context/PostContextV2';
 import { ThemeProvider } from './src/context/ThemeContext';
 
 function AppContent() {
-  const { user } = useAuth();
+  const { user, token, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <NavigationContainer>
-      {user ? <TabNavigator /> : <AuthScreen />}
+      {user && token ? <TabNavigator /> : <AuthScreen />}
     </NavigationContainer>
   );
 }

@@ -97,6 +97,21 @@ export const AuthProvider = ({
         if (savedToken) {
           setToken(savedToken);
           (global as any).userToken = savedToken;
+
+          const res = await fetch(`${API_URL}/me`, {
+            headers: {
+              Authorization: `Bearer ${savedToken}`,
+            },
+          });
+
+          if (res.ok) {
+            const data = (await res.json()) as { user: User };
+            setUser(data.user);
+          } else {
+            await AsyncStorage.removeItem('authToken');
+            setToken(null);
+            (global as any).userToken = null;
+          }
         }
       } catch (error) {
         console.error('Failed to restore token:', error);
