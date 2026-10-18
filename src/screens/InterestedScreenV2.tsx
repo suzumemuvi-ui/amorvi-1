@@ -24,6 +24,8 @@ export default function InterestedScreen({ userId }: any) {
 
   useEffect(() => {
     fetchInterestedProfiles();
+    const interval = setInterval(fetchInterestedProfiles, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchInterestedProfiles = async () => {

@@ -9,6 +9,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
 import { userService } from '../services/userService';
+import { realtimeService } from '../services/realtimeService';
 
 type User = {
   id: string;
@@ -98,18 +99,26 @@ export const AuthProvider = ({
           setToken(savedToken);
           (global as any).userToken = savedToken;
 
-          const res = await fetch(`${API_URL}/me`, {
-            headers: {
-              Authorization: `Bearer ${savedToken}`,
-            },
-          });
+          try {
+            const res = await fetch(`${API_URL}/me`, {
+              headers: {
+                Authorization: `Bearer ${savedToken}`,
+              },
+            });
 
-          if (res.ok) {
-            const data = (await res.json()) as { user: User };
-            setUser(data.user);
-          } else {
+            if (res.ok) {
+              const data = (await res.json()) as { user: User };
+              setUser(data.user);
+            } else {
+              await AsyncStorage.removeItem('authToken');
+              setToken(null);
+              (global as any).userToken = null;
+            }
+          } catch (error) {
+            console.warn('Token restore failed, clearing session:', error);
             await AsyncStorage.removeItem('authToken');
             setToken(null);
+            setUser(null);
             (global as any).userToken = null;
           }
         }
@@ -122,6 +131,20 @@ export const AuthProvider = ({
 
     restoreToken();
   }, []);
+
+  useEffect(() => {
+    if (token) {
+      realtimeService.connect(token);
+    } else {
+      realtimeService.disconnect();
+    }
+
+    return () => {
+      if (token) {
+        realtimeService.disconnect();
+      }
+    };
+  }, [token]);
 
   const login = async (
     email: string,
@@ -136,6 +159,7 @@ export const AuthProvider = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           email: email.trim(),

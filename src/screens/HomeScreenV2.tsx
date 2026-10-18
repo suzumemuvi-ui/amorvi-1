@@ -34,9 +34,11 @@ export default function HomeScreen({ userId, latitude, longitude }: any) {
   const currentLon = location?.longitude ?? longitude;
 
   useEffect(() => {
-    if (currentLat && currentLon) {
-      fetchNearbyPosts();
-    }
+    if (!token || !currentLat || !currentLon) return;
+
+    fetchNearbyPosts();
+    const interval = setInterval(fetchNearbyPosts, 15000);
+    return () => clearInterval(interval);
   }, [currentLat, currentLon, token]);
 
   const fetchNearbyPosts = async () => {

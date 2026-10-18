@@ -1,8 +1,10 @@
 import 'dotenv/config';
+import { createServer } from 'node:http';
 import cors from 'cors';
 import express, { NextFunction, Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
+import { Server, Socket } from 'socket.io';
 import { z } from 'zod';
 import {
   createId,
@@ -14,6 +16,14 @@ import {
 } from './store.js';
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.CORS_ORIGIN ?? true,
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
 
 const port = Number(process.env.PORT ?? 4000);
 const jwtSecret = process.env.JWT_SECRET ?? 'dev-only-secret';
@@ -23,7 +33,128 @@ const googleClient = new OAuth2Client(googleWebClientId);
 app.use(cors({ origin: process.env.CORS_ORIGIN ?? true }));
 app.use(express.json());
 
+const userSocketMap = new Map<string, Set<string>>();
+
 type AuthRequest = Request & { user?: { id: string } };
+type SocketWithUser = Socket & { user?: { id: string } };
+
+const emitNotification = (userId: string, notification: Record<string, unknown>) => {
+  io.to(userId).emit('notification', notification);
+};
+
+io.use((socket: SocketWithUser, next: (err?: Error) => void) => {
+  const authHeader = socket.handshake.headers.authorization;
+  const authToken = socket.handshake.auth?.token;
+  const token = typeof authHeader === 'string'
+    ? authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader
+    : typeof authToken === 'string'
+      ? authToken.startsWith('Bearer ') ? authToken.slice(7) : authToken
+      : null;
+
+  if (!token) {
+    next(new Error('Missing authorization token'));
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(token, jwtSecret) as { sub: string };
+    socket.user = { id: payload.sub };
+    next();
+  } catch {
+    next(new Error('Invalid authorization token'));
+  }
+});
+
+io.on('connection', (socket: SocketWithUser) => {
+  const userId = socket.user?.id;
+
+  if (!userId) {
+    socket.disconnect(true);
+    return;
+  }
+
+  const roomSockets = userSocketMap.get(userId) ?? new Set<string>();
+  roomSockets.add(socket.id);
+  userSocketMap.set(userId, roomSockets);
+  socket.join(userId);
+
+  socket.on('join_room', (roomId: string) => {
+    socket.join(roomId);
+  });
+
+  socket.on('leave_room', (roomId: string) => {
+    socket.leave(roomId);
+  });
+
+  socket.on('send_message', async (data: { receiverId?: string; content?: string }) => {
+    const receiverId = String(data?.receiverId ?? '');
+    const content = String(data?.content ?? '').trim();
+
+    if (!receiverId || !content) {
+      socket.emit('message_error', { error: 'Receiver and content are required' });
+      return;
+    }
+
+    const database = await readDatabase();
+    const sender = database.users.find(candidate => candidate.id === userId);
+    const receiver = database.users.find(candidate => candidate.id === receiverId);
+
+    if (!sender || !receiver) {
+      socket.emit('message_error', { error: 'Receiver not found' });
+      return;
+    }
+
+    const message = {
+      id: createId(),
+      senderId: userId,
+      receiverId,
+      content,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    database.messages.push(message);
+    await writeDatabase(database);
+
+    io.to(receiverId).emit('message_received', { message });
+    emitNotification(receiverId, {
+      type: 'message',
+      title: 'New message',
+      body: `${sender.name} sent you a message`,
+      data: { senderId: userId, receiverId },
+    });
+    socket.emit('message_sent', { message });
+  });
+
+  socket.on('send_match_notification', async (data: { userId?: string; message?: string }) => {
+    const targetUserId = String(data?.userId ?? '');
+    const message = String(data?.message ?? 'You matched with someone new!');
+
+    if (!targetUserId) {
+      return;
+    }
+
+    emitNotification(targetUserId, {
+      type: 'match',
+      title: 'New match',
+      body: message,
+      data: { userId: targetUserId },
+    });
+  });
+
+  socket.on('disconnect', () => {
+    const sockets = userSocketMap.get(userId);
+    if (!sockets) {
+      return;
+    }
+    sockets.delete(socket.id);
+    if (sockets.size === 0) {
+      userSocketMap.delete(userId);
+    } else {
+      userSocketMap.set(userId, sockets);
+    }
+  });
+});
 
 const distanceMeters = (
   lat1: number,
@@ -523,8 +654,15 @@ app.post('/posts/:postId/comments', authenticate, async (req: AuthRequest, res, 
   try {
     const body = z.object({ content: z.string().trim().min(1).max(500) }).parse(req.body);
     const database = await readDatabase();
-    if (!database.posts.some(item => item.id === req.params.postId)) return res.status(404).json({ error: 'Post not found' });
-    const comment = { id: createId(), userId: req.user!.id, postId: req.params.postId, content: body.content, createdAt: new Date().toISOString() };
+    const postId = Array.isArray(req.params.postId) ? req.params.postId[0] : req.params.postId;
+    if (!database.posts.some(item => item.id === postId)) return res.status(404).json({ error: 'Post not found' });
+    const comment: { id: string; userId: string; postId: string; content: string; createdAt: string } = {
+      id: createId(),
+      userId: req.user!.id,
+      postId,
+      content: body.content,
+      createdAt: new Date().toISOString(),
+    };
     database.postComments.push(comment);
     await writeDatabase(database);
     res.status(201).json({ comment });
@@ -537,7 +675,7 @@ app.get('/interested', authenticate, async (req: AuthRequest, res) => {
   const profiles = database.interested
     .filter(item => item.userId === req.user!.id)
     .map(item => database.users.find(user => user.id === item.targetUserId))
-    .filter(Boolean)
+    .filter((user): user is NonNullable<typeof user> => Boolean(user))
     .map(publicUser);
   res.json({ profiles });
 });
@@ -567,12 +705,25 @@ app.post('/likes/:userId', authenticate, async (req: AuthRequest, res) => {
     database.likes.push({ id: createId(), userAId: req.user!.id, userBId: target.id, createdAt: new Date().toISOString() });
   }
   const mutual = database.likes.some(item => item.userAId === target.id && item.userBId === req.user!.id);
-  let match = null;
+  let match = null as { id: string; userAId: string; userBId: string; status: 'matched'; createdAt: string } | null;
   if (mutual) {
-    match = database.matches.find(item => (item.userAId === req.user!.id && item.userBId === target.id) || (item.userAId === target.id && item.userBId === req.user!.id));
+    match = database.matches.find(item => (item.userAId === req.user!.id && item.userBId === target.id) || (item.userAId === target.id && item.userBId === req.user!.id)) ?? null;
     if (!match) {
-      match = { id: createId(), userAId: req.user!.id, userBId: target.id, status: 'matched' as const, createdAt: new Date().toISOString() };
+      match = { id: createId(), userAId: req.user!.id, userBId: target.id, status: 'matched', createdAt: new Date().toISOString() };
       database.matches.push(match);
+
+      emitNotification(req.user!.id, {
+        type: 'match',
+        title: 'It\'s a match!',
+        body: `${target.name} liked you back`,
+        data: { matchId: match.id, otherUserId: target.id },
+      });
+      emitNotification(target.id, {
+        type: 'match',
+        title: 'It\'s a match!',
+        body: `${database.users.find(candidate => candidate.id === req.user!.id)?.name ?? 'Someone'} liked you back`,
+        data: { matchId: match.id, otherUserId: req.user!.id },
+      });
     }
   }
   await writeDatabase(database);
@@ -610,6 +761,12 @@ app.post('/connections/:userId', authenticate, async (req: AuthRequest, res) => 
   if (!connection) {
     connection = { id: createId(), userAId: req.user!.id, userBId: target.id, status: 'accepted' as const, createdAt: new Date().toISOString() };
     database.connections.push(connection);
+    emitNotification(target.id, {
+      type: 'connection',
+      title: 'New connection',
+      body: `${database.users.find(candidate => candidate.id === req.user!.id)?.name ?? 'Someone'} accepted your connection`,
+      data: { connectionId: connection.id, otherUserId: req.user!.id },
+    });
     await writeDatabase(database);
   }
   res.status(201).json({ connection, user: publicUser(target) });
@@ -637,36 +794,6 @@ app.get('/messages/:userId', authenticate, async (req: AuthRequest, res) => {
   res.json({ messages });
 });
 
-app.use(
-  (
-    error: unknown,
-    _req: Request,
-    res: Response,
-    _next: NextFunction,
-  ) => {
-    if (error instanceof z.ZodError) {
-      console.error(
-        'ZOD VALIDATION ERROR:',
-        error.flatten(),
-      );
-
-      res.status(400).json({
-        error: 'Invalid request',
-        details: error.flatten(),
-      });
-
-      return;
-    }
-
-    console.error(error);
-
-    res.status(500).json({
-      error: 'Internal server error',
-    });
-  },
-);
-
-
-app.listen(port, '0.0.0.0', () => {
+httpServer.listen(port, '0.0.0.0', () => {
   console.log(`Amorvi backend running at http://localhost:${port}`);
 });

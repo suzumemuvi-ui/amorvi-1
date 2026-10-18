@@ -22,6 +22,8 @@ export default function MatchesScreen({ userId, onNavigateToChat }: any) {
 
   useEffect(() => {
     fetchMatches();
+    const interval = setInterval(fetchMatches, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchMatches = async () => {

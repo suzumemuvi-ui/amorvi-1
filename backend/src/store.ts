@@ -127,7 +127,19 @@ export const verifyPassword = (password: string, storedHash: string) => {
 export async function readDatabase(): Promise<Database> {
   try {
     const raw = await readFile(dataPath, 'utf8');
-    return JSON.parse(raw) as Database;
+    const parsed = JSON.parse(raw) as Partial<Database>;
+
+    return {
+      users: parsed.users ?? [],
+      posts: parsed.posts ?? [],
+      postLikes: parsed.postLikes ?? [],
+      postComments: parsed.postComments ?? [],
+      interested: parsed.interested ?? [],
+      likes: parsed.likes ?? [],
+      matches: parsed.matches ?? [],
+      connections: parsed.connections ?? [],
+      messages: parsed.messages ?? [],
+    };
   } catch {
     return emptyDatabase();
   }

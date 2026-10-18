@@ -22,6 +22,8 @@ export default function ConnectionsScreen({ userId, onNavigateToChat }: any) {
 
   useEffect(() => {
     fetchConnections();
+    const interval = setInterval(fetchConnections, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchConnections = async () => {

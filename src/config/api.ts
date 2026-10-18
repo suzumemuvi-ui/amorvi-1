@@ -1,25 +1,19 @@
-import { Platform } from 'react-native';
+import { getAppConfig } from './environment';
 
-const resolveApiBaseUrl = () => {
-  const envUrl =
-    (typeof process !== 'undefined' && process.env && process.env.API_BASE_URL) ||
-    (typeof globalThis !== 'undefined' && (globalThis as any).API_BASE_URL) ||
-    null;
-
-  if (envUrl) {
-    return envUrl.replace(/\/$/, '');
-  }
-
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:4000';
-  }
-
-  return 'http://localhost:4000';
-};
-
-export const API_BASE_URL = resolveApiBaseUrl();
+export const API_BASE_URL = getAppConfig().apiBaseUrl;
 
 export const buildApiUrl = (path: string) => {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${API_BASE_URL}${normalizedPath}`;
+};
+
+export const setApiBaseUrl = (baseUrl: string) => {
+  const normalized = baseUrl.trim().replace(/\/$/, '');
+  if (normalized) {
+    (globalThis as any).__API_BASE_URL__ = normalized;
+  }
+};
+
+export const setAppEnvironment = (environment: 'development' | 'staging' | 'production') => {
+  (globalThis as any).__APP_ENV__ = environment;
 };

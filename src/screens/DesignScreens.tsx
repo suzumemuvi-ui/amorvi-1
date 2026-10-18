@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, TextInput, Dimensions, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContextV2';
+import { buildApiUrl } from '../config/api';
+import { realtimeService } from '../services/realtimeService';
 
 const { width } = Dimensions.get('window');
 const pink = '#ff075b';
@@ -33,33 +35,150 @@ function StoryRow() { const p=usePalette(); return <View style={s.stories}>{[['E
 export function HomeDesignScreen() { const p=usePalette(); const [feed,setFeed]=useState('For You'); return <View style={[s.page,{backgroundColor:p.bg}]}><ScrollView contentContainerStyle={s.homeScroll}><View style={s.homeTop}><View style={{flexDirection:'row',alignItems:'center',gap:8}}><Text style={{fontSize:31,color:pink}}>♥</Text><Text style={[s.homeLogo,{color:p.text}]}>Amorvi</Text></View><View style={{flexDirection:'row',gap:17}}><TouchableOpacity onPress={()=>Alert.alert('Create post','Post creation will be available next.')}><Icon name="add-circle-outline" size={31} color={pink}/></TouchableOpacity><TouchableOpacity onPress={p.toggleTheme}><Icon name="notifications-outline" size={28} color={p.text}/></TouchableOpacity></View></View><View style={s.sectionHead}><Text style={[s.sectionTitle,{color:p.text}]}>Stories</Text><TouchableOpacity onPress={()=>Alert.alert('Stories','Stories are ready to browse.') }><Text style={s.pinkText}>View all ›</Text></TouchableOpacity></View><View style={s.homeStories}><TouchableOpacity onPress={()=>Alert.alert('Your story','Story creation will be available next.')} style={s.story}><View style={s.addStory}><Text style={s.addStoryText}>＋</Text></View><Text style={[s.storyName,{color:p.text}]}>Your Story</Text></TouchableOpacity><StoryRow/></View><View style={s.tabs}>{['For You','Nearby','Following'].map(x=><Pill key={x} label={x} active={feed===x} onPress={()=>setFeed(x)}/>)}</View><FeedCard p={p}/></ScrollView></View> }
 function FeedCard({p}:any){const [liked,setLiked]=useState(false);const [saved,setSaved]=useState(false);return <View style={[s.feedCard,{borderBottomColor:p.line}]}><View style={s.feedHead}><Avatar uri={photos.emily} size={49}/><View style={{flex:1}}><Text style={[s.chatName,{color:p.text}]}>Emily, 24　<Text style={{color:pink}}>✿</Text></Text><Text style={[s.detail,{color:p.muted}]}>Skopje　•　1.4 km away</Text><Text style={[s.detail,{color:p.muted}]}>2m ago</Text></View><Icon name="ellipsis-horizontal" size={22} color={p.text}/></View><Image source={{uri:'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=800&q=85'}} style={s.feedImage}/><Text style={[s.feedCaption,{color:p.text}]}>Sunset walks hit different 🌅</Text><View style={s.feedActions}><TouchableOpacity onPress={()=>setLiked(!liked)} style={{flexDirection:'row',gap:7}}><Icon name={liked?'heart':'heart-outline'} size={25} color={pink}/><Text style={[s.feedCount,{color:p.text}]}>{liked?'242':'241'}</Text></TouchableOpacity><TouchableOpacity onPress={()=>Alert.alert('Comments','Comments will open here.')} style={{flexDirection:'row',gap:7}}><Icon name="chatbubble-outline" size={23} color={p.text}/><Text style={[s.feedCount,{color:p.text}]}>18</Text></TouchableOpacity><TouchableOpacity onPress={()=>setSaved(!saved)} style={[s.interested,saved&&{backgroundColor:'#ffe5ef'}]}><Icon name={saved?'heart':'heart-outline'} size={18} color={pink}/><Text style={s.pinkText}>{saved?'Saved':'Interested'}</Text></TouchableOpacity></View></View>}
 
-export function ChatsScreen({navigation}:any) { const p=usePalette(); const [tab,setTab]=useState('All'); const [query,setQuery]=useState(''); const visible=people.filter((x:any)=>x[0].toLowerCase().includes(query.toLowerCase()) || x[1].toLowerCase().includes(query.toLowerCase())); return <View style={[s.page,{backgroundColor:p.bg}]}><Header title="Chats"/><ScrollView contentContainerStyle={s.scroll}><Search placeholder="Search messages" value={query} onChangeText={setQuery}/><View style={s.sectionHead}><Text style={[s.sectionTitle,{color:p.text}]}>New matches</Text><Text style={s.pinkText}>View all ›</Text></View><StoryRow/><View style={s.tabs}>{['All','Unread','Friends'].map(x=><Pill key={x} label={x} active={tab===x} onPress={()=>setTab(x)}/>)}</View>{tab==='Friends'?<FriendsEmpty navigation={navigation}/>:visible.map((x:any,i)=><TouchableOpacity key={x[0]} onPress={()=>navigation.navigate('Conversation',{name:x[0],photo:x[3]})} style={[s.chatRow,{borderBottomColor:p.line}]}><Avatar uri={x[3]} online={i===1||i===5}/><View style={s.chatCopy}><Text style={[s.chatName,{color:p.text}]}>{x[0]} {i===2||i===3?<Text style={s.friendTag}>Friends</Text>:null}</Text><Text numberOfLines={1} style={[s.chatMessage,{color:i===0?pink:p.muted}]}>{i===0?'• ':''}{x[1]}</Text></View><View><Text style={[s.time,{color:p.muted}]}>{x[2]}</Text>{i===1&&<Text style={s.unread}>2</Text>}</View></TouchableOpacity>)}{visible.length===0?<Text style={[s.emptySearch,{color:p.muted}]}>No conversations found</Text>:null}</ScrollView></View> }
-function FriendsEmpty({navigation}:any){ const p=usePalette(); return <View><Text style={[s.sectionTitle,{color:p.text,marginTop:18}]}>Friend connections · 2</Text><Text style={[s.sub,{color:p.muted}]}>Your conversations from Friends mode</Text>{people.slice(2,4).map((x:any)=><TouchableOpacity onPress={()=>navigation.navigate('Conversation',{name:x[0],photo:x[3]})} key={x[0]} style={[s.chatRow,{borderBottomColor:p.line}]}><Avatar uri={x[3]}/><View style={s.chatCopy}><Text style={[s.chatName,{color:p.text}]}>{x[0]} <Text style={{color:purple}}>♧</Text></Text><Text style={[s.chatMessage,{color:p.muted}]}>{x[1]}</Text></View><Text style={[s.time,{color:p.muted}]}>{x[2]}</Text></TouchableOpacity>)}<View style={s.emptyBlock}><Icon name="people-outline" size={38} color={purple}/><Text style={[s.sub,{color:p.muted}]}>Meet people with shared interests</Text><TouchableOpacity onPress={()=>navigation.navigate('Radar')} style={s.outlineButton}><Text style={s.pinkText}>Explore Friends</Text></TouchableOpacity></View></View> }
+export function ChatsScreen({navigation}:any) { 
+  const p=usePalette();
+  const { token } = useAuth();
+  const [tab,setTab]=useState('All');
+  const [query,setQuery]=useState('');
+  const [conversations,setConversations]=useState<any[]>([]);
+  const [backendDown, setBackendDown] = useState(false);
+
+  const loadConversations = useCallback(async () => {
+    if (!token) return;
+    try {
+      setBackendDown(false);
+      const response = await fetch(buildApiUrl('/conversations'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+      const data = (await response.json()) as {
+        conversations?: Array<{
+          user: { id: string; name: string; images?: string[] };
+          latestMessage?: string;
+          latestAt?: string | null;
+          unread?: number;
+        }>;
+      };
+      setConversations(data.conversations ?? []);
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+      setConversations([]);
+      setBackendDown(true);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    loadConversations();
+    const interval = setInterval(loadConversations, 5000);
+    return () => clearInterval(interval);
+  }, [loadConversations]);
+
+  const visible = conversations.filter((item: { user: { name?: string; id?: string }; latestMessage?: string; unread?: number }) => {
+    const name = (item.user?.name ?? '').toLowerCase();
+    const preview = (item.latestMessage ?? '').toLowerCase();
+    const matchesQuery = !query || name.includes(query.toLowerCase()) || preview.includes(query.toLowerCase());
+    return matchesQuery && (tab === 'All' || (tab === 'Unread' ? (item.unread ?? 0) > 0 : true));
+  });
+
+  let listContent: React.ReactNode = null;
+
+  if (backendDown) {
+    listContent = (
+      <View style={s.emptyBlock}>
+        <Icon name="cloud-offline-outline" size={40} color={pink} />
+        <Text style={[s.sectionTitle,{color:p.text}]}>Chats are offline</Text>
+        <Text style={[s.sub,{color:p.muted,textAlign:'center'}]}>The backend is currently unavailable. Check that the server is running, then refresh.</Text>
+      </View>
+    );
+  } else if (visible.length === 0) {
+    listContent = <Text style={[s.emptySearch,{color:p.muted}]}>No conversations found</Text>;
+  } else {
+    listContent = (
+      <View>
+        {visible.map((item: any)=><TouchableOpacity key={item.user.id} onPress={()=>navigation.navigate('Conversation',{ user: item.user, chatId: item.user.id })} style={[s.chatRow,{borderBottomColor:p.line}]}><Avatar uri={item.user.images?.[0] ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=700&q=85'} online={true}/><View style={s.chatCopy}><Text style={[s.chatName,{color:p.text}]}>{item.user.name}</Text><Text numberOfLines={1} style={[s.chatMessage,{color:(item.unread ?? 0) > 0 ? pink : p.muted}]}>{item.latestMessage || 'Start a conversation'}</Text></View><View><Text style={[s.time,{color:p.muted}]}>{item.latestAt ? new Date(item.latestAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}</Text>{(item.unread ?? 0) > 0 && <Text style={s.unread}>{item.unread}</Text>}</View></TouchableOpacity>)}
+      </View>
+    );
+  }
+
+  return <View style={[s.page,{backgroundColor:p.bg}]}><Header title="Chats"/><ScrollView contentContainerStyle={s.scroll}><Search placeholder="Search messages" value={query} onChangeText={setQuery}/><View style={s.sectionHead}><Text style={[s.sectionTitle,{color:p.text}]}>Recent conversations</Text><Text style={s.pinkText}>Live</Text></View><View style={s.tabs}>{['All','Unread'].map(x=><Pill key={x} label={x} active={tab===x} onPress={()=>setTab(x)}/>)}</View>{listContent}</ScrollView></View> }
 
 export function ConversationScreen({navigation,route}:any) {
   const p = usePalette();
-  const { name, photo } = route.params;
+  const { user: currentUser, token } = useAuth();
+  const { user, chatId } = route.params ?? {};
   const [draft, setDraft] = useState('');
-  const [messages, setMessages] = useState([
-    { id: '1', mine: false, text: 'Hey! Great to hear from you.', time: '10:14' },
-    { id: '2', mine: true, text: 'Hi! How are you?', time: '10:16' },
-  ]);
-  const send = () => {
+  const [messages, setMessages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadMessages = useCallback(async () => {
+    if (!token || !user?.id) return;
+    const response = await fetch(buildApiUrl(`/messages/${user.id}`), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return;
+    const data = (await response.json()) as { messages?: Array<{ id: string; senderId: string; receiverId: string; content: string; createdAt?: string }> };
+    setMessages(data.messages ?? []);
+  }, [token, user]);
+
+  useEffect(() => {
+    loadMessages();
+  }, [loadMessages]);
+
+  useEffect(() => {
+    if (!token || !user?.id) return;
+
+    const handleIncoming = (payload: { message: any }) => {
+      const incoming = payload.message;
+      if (incoming.senderId !== user.id && incoming.receiverId !== user.id) return;
+      setMessages(prev => {
+        const exists = prev.some(item => item.id === incoming.id);
+        return exists ? prev : [...prev, incoming];
+      });
+    };
+
+    realtimeService.onMessageReceived(handleIncoming);
+    realtimeService.joinRoom(user.id);
+
+    return () => {
+      realtimeService.leaveRoom(user.id);
+    };
+  }, [token, user]);
+
+  const send = async () => {
     const text = draft.trim();
-    if (!text) return;
-    setMessages(items => [...items, { id: String(Date.now()), mine: true, text, time: 'Now' }]);
-    setDraft('');
+    if (!text || !token || !user?.id) return;
+
+    setLoading(true);
+    try {
+      realtimeService.sendMessage(user.id, text);
+      setDraft('');
+      await loadMessages();
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return <View style={[s.page, { backgroundColor: p.bg }]}>
-    <View style={[s.conversationHeader, { borderBottomColor: p.line }]}>
+  return <View style={[s.page, { backgroundColor: p.bg }]}> 
+    <View style={[s.conversationHeader, { borderBottomColor: p.line }]}> 
       <TouchableOpacity hitSlop={12} onPress={() => navigation.goBack()}><Icon name="chevron-back" size={28} color={p.text}/></TouchableOpacity>
-      <Avatar uri={photo} size={39} online/>
-      <View style={{ flex: 1 }}><Text style={[s.chatName, { color: p.text }]}>{name}</Text><Text style={[s.sub, { color: '#00a935', marginTop: 0 }]}>Online</Text></View>
-      <TouchableOpacity hitSlop={12} onPress={() => Alert.alert('Calling', `Calling ${name}…`)}><Icon name="call-outline" size={24} color={pink}/></TouchableOpacity>
+      <Avatar uri={user?.images?.[0] ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=700&q=85'} size={39} online/>
+      <View style={{ flex: 1 }}><Text style={[s.chatName, { color: p.text }]}>{user?.name ?? 'Conversation'}</Text><Text style={[s.sub, { color: '#00a935', marginTop: 0 }]}>Online</Text></View>
+      <TouchableOpacity hitSlop={12} onPress={() => Alert.alert('Calling', `Calling ${user?.name ?? 'them'}…`)}><Icon name="call-outline" size={24} color={pink}/></TouchableOpacity>
     </View>
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.messageList}>{messages.map(message => <View key={message.id} style={[s.messageRow, message.mine ? s.messageMine : s.messageTheirs]}><View style={[s.messageBubble, { backgroundColor: message.mine ? pink : p.surface }]}><Text style={{ color: message.mine ? '#fff' : p.text }}>{message.text}</Text></View><Text style={[s.messageTime, { color: p.muted }]}>{message.time}</Text></View>)}</ScrollView>
-    <View style={[s.composer, { borderTopColor: p.line, backgroundColor: p.bg }]}><TextInput value={draft} onChangeText={setDraft} onSubmitEditing={send} placeholder="Message..." placeholderTextColor={p.muted} style={[s.composerInput, { color: p.text, backgroundColor: p.surface }]}/><TouchableOpacity onPress={send} style={s.sendButton}><Icon name="send" color="#fff" size={19}/></TouchableOpacity></View>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.messageList}>
+      {messages.map((message: any) => {
+        const mine = message.senderId === currentUser?.id;
+        return <View key={message.id} style={[s.messageRow, mine ? s.messageMine : s.messageTheirs]}>
+          <View style={[s.messageBubble, { backgroundColor: mine ? pink : p.surface }]}>
+            <Text style={{ color: mine ? '#fff' : p.text }}>{message.content}</Text>
+          </View>
+          <Text style={[s.messageTime, { color: p.muted }]}>{message.createdAt ? new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}</Text>
+        </View>;
+      })}
+    </ScrollView>
+    <View style={[s.composer, { borderTopColor: p.line, backgroundColor: p.bg }]}><TextInput value={draft} onChangeText={setDraft} onSubmitEditing={send} placeholder="Message..." placeholderTextColor={p.muted} style={[s.composerInput, { color: p.text, backgroundColor: p.surface }]} /> <TouchableOpacity onPress={send} disabled={loading} style={s.sendButton}><Icon name="send" color="#fff" size={19}/></TouchableOpacity></View>
   </View>;
 }
 
