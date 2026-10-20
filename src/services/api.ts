@@ -1,9 +1,8 @@
-import { Platform } from 'react-native';
+import { API_BASE_URL } from '../config/api';
 
-export const API_BASE_URL =
-  Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
+export { API_BASE_URL };
 
-type ApiOptions = RequestInit & {
+export type ApiOptions = RequestInit & {
   token?: string;
 };
 
@@ -11,7 +10,7 @@ export async function apiRequest<T>(
   path: string,
   { token, headers, ...options }: ApiOptions = {},
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
