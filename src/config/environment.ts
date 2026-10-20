@@ -6,9 +6,9 @@ export type AppConfig = {
 };
 
 const defaultConfig: Record<AppEnvironment, string> = {
-  development: 'http://10.0.2.2:4000',
+  development: 'https://amorvi.fly.dev',
   staging: 'https://staging-api.amorvi.app',
-  production: 'https://api.amorvi.app',
+  production: 'https://amorvi.fly.dev',
 };
 
 const getRuntimeEnvironment = (): AppEnvironment => {
