@@ -1,4 +1,6 @@
-import { createId, hashPassword, writeDatabase } from './store.js';
+import { createId, hashPassword, initializeStore, writeDatabase } from './store.js';
+
+await initializeStore();
 
 const now = new Date().toISOString();
 const passwordHash = hashPassword('password123');

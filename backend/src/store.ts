@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { Pool } from 'pg';
 
 export type User = {
   id: string;
@@ -94,6 +95,9 @@ export type Database = {
 };
 
 const dataPath = path.resolve(process.cwd(), process.env.DATA_FILE ?? './data/dev.json');
+const pool = process.env.DATABASE_URL
+  ? new Pool({ connectionString: process.env.DATABASE_URL, max: 3 })
+  : null;
 
 const emptyDatabase = (): Database => ({
   users: [],
@@ -108,6 +112,39 @@ const emptyDatabase = (): Database => ({
 });
 
 export const createId = () => randomUUID();
+
+const normalizeDatabase = (parsed: Partial<Database>): Database => ({
+  users: parsed.users ?? [],
+  posts: parsed.posts ?? [],
+  postLikes: parsed.postLikes ?? [],
+  postComments: parsed.postComments ?? [],
+  interested: parsed.interested ?? [],
+  likes: parsed.likes ?? [],
+  matches: parsed.matches ?? [],
+  connections: parsed.connections ?? [],
+  messages: parsed.messages ?? [],
+});
+
+export async function initializeStore() {
+  if (!pool) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('DATABASE_URL is required in production; refusing to use ephemeral file storage.');
+    }
+    return;
+  }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS amorvi_state (
+      singleton BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (singleton),
+      data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(
+    'INSERT INTO amorvi_state (singleton, data) VALUES (TRUE, $1::jsonb) ON CONFLICT (singleton) DO NOTHING',
+    [JSON.stringify(emptyDatabase())],
+  );
+}
 
 export const hashPassword = (password: string) => {
   const salt = randomUUID();
@@ -125,27 +162,33 @@ export const verifyPassword = (password: string, storedHash: string) => {
 };
 
 export async function readDatabase(): Promise<Database> {
+  if (pool) {
+    const result = await pool.query<{ data: Partial<Database> }>(
+      'SELECT data FROM amorvi_state WHERE singleton = TRUE',
+    );
+    return result.rows[0] ? normalizeDatabase(result.rows[0].data) : emptyDatabase();
+  }
+
   try {
     const raw = await readFile(dataPath, 'utf8');
     const parsed = JSON.parse(raw) as Partial<Database>;
-
-    return {
-      users: parsed.users ?? [],
-      posts: parsed.posts ?? [],
-      postLikes: parsed.postLikes ?? [],
-      postComments: parsed.postComments ?? [],
-      interested: parsed.interested ?? [],
-      likes: parsed.likes ?? [],
-      matches: parsed.matches ?? [],
-      connections: parsed.connections ?? [],
-      messages: parsed.messages ?? [],
-    };
+    return normalizeDatabase(parsed);
   } catch {
     return emptyDatabase();
   }
 }
 
 export async function writeDatabase(database: Database) {
+  if (pool) {
+    await pool.query(
+      `INSERT INTO amorvi_state (singleton, data, updated_at)
+       VALUES (TRUE, $1::jsonb, NOW())
+       ON CONFLICT (singleton) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+      [JSON.stringify(database)],
+    );
+    return;
+  }
+
   await mkdir(path.dirname(dataPath), { recursive: true });
   await writeFile(dataPath, JSON.stringify(database, null, 2));
 }

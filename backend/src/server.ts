@@ -9,6 +9,7 @@ import { z } from 'zod';
 import {
   createId,
   hashPassword,
+  initializeStore,
   publicUser,
   readDatabase,
   verifyPassword,
@@ -794,6 +795,13 @@ app.get('/messages/:userId', authenticate, async (req: AuthRequest, res) => {
   res.json({ messages });
 });
 
-httpServer.listen(port, '0.0.0.0', () => {
-  console.log(`Amorvi backend running at http://localhost:${port}`);
-});
+initializeStore()
+  .then(() => {
+    httpServer.listen(port, '0.0.0.0', () => {
+      console.log(`Amorvi backend running at http://localhost:${port}`);
+    });
+  })
+  .catch(error => {
+    console.error('Failed to initialize datastore:', error);
+    process.exitCode = 1;
+  });
