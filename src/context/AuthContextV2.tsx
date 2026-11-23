@@ -1,6 +1,7 @@
 import React, {
   createContext,
   useContext,
+  useCallback,
   useState,
   useEffect,
   ReactNode,
@@ -24,6 +25,12 @@ type User = {
     longitude: number;
   } | null;
   images: string[];
+  city?: string;
+  jobTitle?: string;
+  education?: string;
+  dailyRoutine?: string;
+  additionalInfo?: string;
+  createdAt?: string;
 };
 
 type AuthContextType = {
@@ -35,7 +42,17 @@ type AuthContextType = {
     email: string,
     password: string,
     name: string,
-    age: number
+    age: number,
+    profile?: {
+      bio?: string;
+      interests?: string[];
+      goals?: string[];
+      city?: string;
+      jobTitle?: string;
+      education?: string;
+      dailyRoutine?: string;
+      additionalInfo?: string;
+    }
   ) => Promise<void>;
   logout: () => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
@@ -50,6 +67,11 @@ type AuthContextType = {
     interests?: string[];
     goals?: string[];
     images?: string[];
+    city?: string;
+    jobTitle?: string;
+    education?: string;
+    dailyRoutine?: string;
+    additionalInfo?: string;
   }) => Promise<void>;
 };
 
@@ -198,7 +220,17 @@ export const AuthProvider = ({
     email: string,
     password: string,
     name: string,
-    age: number
+    age: number,
+    profile?: {
+      bio?: string;
+      interests?: string[];
+      goals?: string[];
+      city?: string;
+      jobTitle?: string;
+      education?: string;
+      dailyRoutine?: string;
+      additionalInfo?: string;
+    }
   ) => {
     try {
       setIsLoading(true);
@@ -219,6 +251,7 @@ export const AuthProvider = ({
           password: password.trim(),
           name: name.trim(),
           age,
+          ...profile,
         }),
       });
 
@@ -298,7 +331,7 @@ export const AuthProvider = ({
     }
   };
 
-  const updateLocation = async (
+  const updateLocation = useCallback(async (
     latitude: number,
     longitude: number
   ) => {
@@ -332,7 +365,7 @@ export const AuthProvider = ({
       console.error('Location update error:', error);
       throw error;
     }
-  };
+  }, [token]);
 
   const updateProfile = async (data: {
     name?: string;
@@ -341,6 +374,11 @@ export const AuthProvider = ({
     interests?: string[];
     goals?: string[];
     images?: string[];
+    city?: string;
+    jobTitle?: string;
+    education?: string;
+    dailyRoutine?: string;
+    additionalInfo?: string;
   }) => {
     if (!token) {
       throw new Error('Not authenticated');

@@ -2,7 +2,19 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { AmorviScreen, ChatsScreen, ConnectionsScreen, ConversationScreen, EditProfileScreen, HomeDesignScreen, LikesScreen, ProfileScreen, RadarScreen } from '../screens/DesignScreens';
+import { ChatsScreen, ConversationScreen } from '../screens/DesignScreens';
+import {
+  AmorviScreen,
+  ConnectionsScreen,
+  EditProfileScreen,
+  HomeScreen,
+  LikesScreen,
+  MatchesScreen,
+  ProfileScreen,
+  RadarScreen,
+  SettingsScreen,
+  AccountScreen,
+} from '../screens/CoreScreens';
 import { useTheme } from '../context/ThemeContext';
 
 const Tab = createBottomTabNavigator();
@@ -13,12 +25,15 @@ function ProfileStack() {
     <Stack.Screen name="ProfileMain" component={ProfileScreen}/>
     <Stack.Screen name="EditProfile" component={EditProfileScreen}/>
     <Stack.Screen name="Likes" component={LikesScreen}/>
+    <Stack.Screen name="Matches" component={MatchesScreen}/>
     <Stack.Screen name="Connections" component={ConnectionsScreen}/>
+    <Stack.Screen name="Settings" component={SettingsScreen}/>
+    <Stack.Screen name="Account" component={AccountScreen}/>
   </Stack.Navigator>;
 }
 
 function HomeStack() {
-  return <Stack.Navigator screenOptions={{ headerShown: false }}><Stack.Screen name="HomeMain" component={HomeDesignScreen}/></Stack.Navigator>;
+  return <Stack.Navigator screenOptions={{ headerShown: false }}><Stack.Screen name="HomeMain" component={HomeScreen}/></Stack.Navigator>;
 }
 
 function ChatStack() {

@@ -19,6 +19,12 @@ import {
 } from './src/context/AuthContextV2';
 import { PostProvider } from './src/context/PostContextV2';
 import { ThemeProvider } from './src/context/ThemeContext';
+import { useLocationTracking } from './src/hooks/useLocationTracking';
+
+function SignedInContent() {
+  useLocationTracking();
+  return <TabNavigator />;
+}
 
 function AppContent() {
   const { user, token, isLoading } = useAuth();
@@ -29,7 +35,7 @@ function AppContent() {
 
   return (
     <NavigationContainer>
-      {user && token ? <TabNavigator /> : <AuthScreen />}
+      {user && token ? <SignedInContent /> : <AuthScreen />}
     </NavigationContainer>
   );
 }

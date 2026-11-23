@@ -61,6 +61,11 @@ class UserService {
       interests?: string[];
       goals?: string[];
       images?: string[];
+      city?: string;
+      jobTitle?: string;
+      education?: string;
+      dailyRoutine?: string;
+      additionalInfo?: string;
     }
   ): Promise<{ user: User }> {
     const res = await fetch(`${API_BASE_URL}/me/profile`, {

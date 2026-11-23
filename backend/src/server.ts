@@ -99,9 +99,22 @@ io.on('connection', (socket: SocketWithUser) => {
     const database = await readDatabase();
     const sender = database.users.find(candidate => candidate.id === userId);
     const receiver = database.users.find(candidate => candidate.id === receiverId);
+    const isAllowedConversation =
+      database.matches.some(match =>
+        (match.userAId === userId && match.userBId === receiverId) ||
+        (match.userAId === receiverId && match.userBId === userId),
+      ) || database.connections.some(connection =>
+        connection.status === 'accepted' &&
+        ((connection.userAId === userId && connection.userBId === receiverId) ||
+          (connection.userAId === receiverId && connection.userBId === userId)),
+      );
 
     if (!sender || !receiver) {
       socket.emit('message_error', { error: 'Receiver not found' });
+      return;
+    }
+    if (!isAllowedConversation) {
+      socket.emit('message_error', { error: 'You can message only a match or accepted connection' });
       return;
     }
 
@@ -205,6 +218,14 @@ const body = z
     password: z.string().min(8),
     name: z.string().trim().min(1),
     age: z.coerce.number().int().min(18),
+    bio: z.string().trim().max(500).optional().default(''),
+    interests: z.array(z.string().trim().min(1).max(50)).max(30).optional().default([]),
+    goals: z.array(z.string().trim().min(1).max(50)).max(20).optional().default([]),
+    city: z.string().trim().max(100).optional().default(''),
+    jobTitle: z.string().trim().max(100).optional().default(''),
+    education: z.string().trim().max(150).optional().default(''),
+    dailyRoutine: z.string().trim().max(500).optional().default(''),
+    additionalInfo: z.string().trim().max(500).optional().default(''),
   })
   .parse(req.body);
 
@@ -225,12 +246,17 @@ const body = z
       googleId: null,
       name: body.name,
       age: body.age,
-      bio: '',
-      interests: [],
-      goals: [],
+      bio: body.bio,
+      interests: body.interests,
+      goals: body.goals,
       latitude: null,
       longitude: null,
       images: [],
+      city: body.city,
+      jobTitle: body.jobTitle,
+      education: body.education,
+      dailyRoutine: body.dailyRoutine,
+      additionalInfo: body.additionalInfo,
       createdAt: now,
       updatedAt: now,
     };
@@ -403,6 +429,11 @@ app.patch('/me/profile', authenticate, async (req: AuthRequest, res, next) => {
         interests: z.array(z.string()).optional(),
         goals: z.array(z.string()).optional(),
         images: z.array(z.string()).optional(),
+        city: z.string().trim().max(100).optional(),
+        jobTitle: z.string().trim().max(100).optional(),
+        education: z.string().trim().max(150).optional(),
+        dailyRoutine: z.string().trim().max(500).optional(),
+        additionalInfo: z.string().trim().max(500).optional(),
       })
       .parse(req.body);
 
@@ -420,6 +451,11 @@ app.patch('/me/profile', authenticate, async (req: AuthRequest, res, next) => {
     if (body.interests) user.interests = body.interests;
     if (body.goals) user.goals = body.goals;
     if (body.images) user.images = body.images;
+    if (body.city !== undefined) user.city = body.city;
+    if (body.jobTitle !== undefined) user.jobTitle = body.jobTitle;
+    if (body.education !== undefined) user.education = body.education;
+    if (body.dailyRoutine !== undefined) user.dailyRoutine = body.dailyRoutine;
+    if (body.additionalInfo !== undefined) user.additionalInfo = body.additionalInfo;
     user.updatedAt = new Date().toISOString();
 
     await writeDatabase(database);
@@ -430,12 +466,55 @@ app.patch('/me/profile', authenticate, async (req: AuthRequest, res, next) => {
   }
 });
 
+app.patch('/me/password', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    const body = z.object({
+      currentPassword: z.string().min(1),
+      newPassword: z.string().min(8).max(128),
+    }).parse(req.body);
+    const database = await readDatabase();
+    const user = database.users.find(candidate => candidate.id === req.user!.id);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    if (!user.passwordHash || !verifyPassword(body.currentPassword, user.passwordHash)) {
+      res.status(401).json({ error: 'Current password is incorrect' });
+      return;
+    }
+    user.passwordHash = hashPassword(body.newPassword);
+    user.updatedAt = new Date().toISOString();
+    await writeDatabase(database);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete('/me', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const database = await readDatabase();
+  const postIds = new Set(database.posts.filter(post => post.userId === userId).map(post => post.id));
+  database.users = database.users.filter(user => user.id !== userId);
+  database.posts = database.posts.filter(post => post.userId !== userId);
+  database.postLikes = database.postLikes.filter(like => !postIds.has(like.postId) && like.userId !== userId);
+  database.postComments = database.postComments.filter(comment => !postIds.has(comment.postId) && comment.userId !== userId);
+  database.interested = database.interested.filter(item => item.userId !== userId && item.targetUserId !== userId);
+  database.likes = database.likes.filter(like => like.userAId !== userId && like.userBId !== userId);
+  database.matches = database.matches.filter(match => match.userAId !== userId && match.userBId !== userId);
+  database.connections = database.connections.filter(connection => connection.userAId !== userId && connection.userBId !== userId);
+  database.messages = database.messages.filter(message => message.senderId !== userId && message.receiverId !== userId);
+  database.passes = database.passes.filter(pass => pass.userId !== userId && pass.targetUserId !== userId);
+  await writeDatabase(database);
+  res.status(204).end();
+});
+
 app.post('/posts', authenticate, async (req: AuthRequest, res, next) => {
   try {
     const body = z
       .object({
-        images: z.array(z.string()).min(1),
-        caption: z.string().trim().max(500),
+        images: z.array(z.string()).max(10).optional().default([]),
+        caption: z.string().trim().min(1).max(500),
       })
       .parse(req.body);
 
@@ -536,6 +615,10 @@ app.get('/users/nearby', authenticate, async (req: AuthRequest, res) => {
     .filter(
       user =>
         user.id !== currentUser.id &&
+        !database.passes.some(pass =>
+          (pass.userId === currentUser.id && pass.targetUserId === user.id) ||
+          (pass.userId === user.id && pass.targetUserId === currentUser.id),
+        ) &&
         user.latitude !== null &&
         user.longitude !== null,
     )
@@ -594,6 +677,20 @@ app.post('/messages', authenticate, async (req: AuthRequest, res, next) => {
       return;
     }
 
+    const isAllowedConversation =
+      database.matches.some(match =>
+        (match.userAId === req.user!.id && match.userBId === receiver.id) ||
+        (match.userAId === receiver.id && match.userBId === req.user!.id),
+      ) || database.connections.some(connection =>
+        connection.status === 'accepted' &&
+        ((connection.userAId === req.user!.id && connection.userBId === receiver.id) ||
+          (connection.userAId === receiver.id && connection.userBId === req.user!.id)),
+      );
+    if (!isAllowedConversation) {
+      res.status(403).json({ error: 'You can message only a match or accepted connection' });
+      return;
+    }
+
     const message = {
       id: createId(),
       senderId: req.user!.id,
@@ -605,6 +702,14 @@ app.post('/messages', authenticate, async (req: AuthRequest, res, next) => {
 
     database.messages.push(message);
     await writeDatabase(database);
+
+    io.to(receiver.id).emit('message_received', { message });
+    emitNotification(receiver.id, {
+      type: 'message',
+      title: 'New message',
+      body: `${database.users.find(candidate => candidate.id === req.user!.id)?.name ?? 'Someone'} sent you a message`,
+      data: { senderId: req.user!.id, receiverId: receiver.id },
+    });
 
     res.status(201).json({ message });
   } catch (error) {
@@ -666,6 +771,24 @@ app.post('/posts/:postId/comments', authenticate, async (req: AuthRequest, res, 
     await writeDatabase(database);
     res.status(201).json({ comment });
   } catch (error) { next(error); }
+});
+
+app.get('/posts/:postId/comments', authenticate, async (req: AuthRequest, res) => {
+  const database = await readDatabase();
+  const postId = Array.isArray(req.params.postId) ? req.params.postId[0] : req.params.postId;
+  if (!database.posts.some(item => item.id === postId)) {
+    res.status(404).json({ error: 'Post not found' });
+    return;
+  }
+  const comments = database.postComments
+    .filter(comment => comment.postId === postId)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .map(comment => {
+      const author = database.users.find(user => user.id === comment.userId);
+      return author ? { ...comment, user: publicUser(author) } : null;
+    })
+    .filter(Boolean);
+  res.json({ comments });
 });
 
 // Amorvi: saved profiles, likes/matches, and received likes
@@ -739,6 +862,34 @@ app.get('/likes/received', authenticate, async (req: AuthRequest, res) => {
   res.json({ profiles });
 });
 
+app.delete('/likes/:userId', authenticate, async (req: AuthRequest, res) => {
+  const database = await readDatabase();
+  database.likes = database.likes.filter(
+    like => !(like.userAId === req.params.userId && like.userBId === req.user!.id),
+  );
+  await writeDatabase(database);
+  res.status(204).end();
+});
+
+app.post('/passes/:userId', authenticate, async (req: AuthRequest, res) => {
+  const database = await readDatabase();
+  const target = database.users.find(user => user.id === req.params.userId);
+  if (!target || target.id === req.user!.id) {
+    res.status(404).json({ error: 'Profile not found' });
+    return;
+  }
+  if (!database.passes.some(pass => pass.userId === req.user!.id && pass.targetUserId === target.id)) {
+    database.passes.push({
+      id: createId(),
+      userId: req.user!.id,
+      targetUserId: target.id,
+      createdAt: new Date().toISOString(),
+    });
+    await writeDatabase(database);
+  }
+  res.status(204).end();
+});
+
 // Connections and conversations
 app.get('/connections', authenticate, async (req: AuthRequest, res) => {
   const database = await readDatabase();
@@ -791,6 +942,19 @@ app.get('/messages/:userId', authenticate, async (req: AuthRequest, res) => {
   messages.forEach(item => { if (item.receiverId === req.user!.id) item.read = true; });
   await writeDatabase(database);
   res.json({ messages });
+});
+
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  if (error instanceof z.ZodError) {
+    res.status(400).json({
+      error: error.issues[0]?.message ?? 'Invalid request',
+      issues: error.issues,
+    });
+    return;
+  }
+
+  console.error('Unhandled API error:', error);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 initializeStore()

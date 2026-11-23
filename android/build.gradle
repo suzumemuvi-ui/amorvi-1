@@ -6,6 +6,12 @@ buildscript {
         targetSdkVersion = 36
         ndkVersion = "27.1.12297006"
         kotlinVersion = "2.1.20"
+        // Keep every location SDK consumer on the same API version. The
+        // geolocation module otherwise compiles against its old 18.0.0
+        // fallback while Maps resolves 21.3.0 at runtime, which crashes on
+        // FusedLocationProviderClient with IncompatibleClassChangeError.
+        playServicesLocationVersion = "21.3.0"
+        googlePlayServicesLocationVersion = "21.3.0"
     }
     repositories {
         google()

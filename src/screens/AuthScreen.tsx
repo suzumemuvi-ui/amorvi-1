@@ -226,11 +226,22 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess?: () => void }) => {
       setLoading(true);
 
       if (isSignUp) {
+        const splitValues = (value: string) => value.split(',').map(item => item.trim()).filter(Boolean);
         await auth.register(
           email.trim(),
           password,
           name.trim(),
           resolveAge(),
+          {
+            bio: dailyRoutine.trim(),
+            interests: splitValues(interests || hobbies),
+            goals: splitValues(additionalInfo),
+            city: city.trim(),
+            jobTitle: jobTitle.trim(),
+            education: education.trim(),
+            dailyRoutine: dailyRoutine.trim(),
+            additionalInfo: additionalInfo.trim(),
+          },
         );
       } else {
         await auth.login(email.trim(), password);

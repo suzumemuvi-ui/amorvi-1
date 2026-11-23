@@ -114,12 +114,16 @@ export function ConversationScreen({navigation,route}:any) {
 
   const loadMessages = useCallback(async () => {
     if (!token || !user?.id) return;
-    const response = await fetch(buildApiUrl(`/messages/${user.id}`), {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) return;
-    const data = (await response.json()) as { messages?: Array<{ id: string; senderId: string; receiverId: string; content: string; createdAt?: string }> };
-    setMessages(data.messages ?? []);
+    try {
+      const response = await fetch(buildApiUrl(`/messages/${user.id}`), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return;
+      const data = (await response.json()) as { messages?: Array<{ id: string; senderId: string; receiverId: string; content: string; createdAt?: string }> };
+      setMessages(data.messages ?? []);
+    } catch (error) {
+      console.warn('Could not refresh messages:', error);
+    }
   }, [token, user]);
 
   useEffect(() => {
@@ -152,9 +156,21 @@ export function ConversationScreen({navigation,route}:any) {
 
     setLoading(true);
     try {
-      realtimeService.sendMessage(user.id, text);
+      const response = await fetch(buildApiUrl('/messages'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ receiverId: user.id, content: text }),
+      });
+      const result = (await response.json().catch(() => ({}))) as { error?: string; message?: any };
+      if (!response.ok) throw new Error(result?.error || 'Message could not be sent');
+      if (!result.message) throw new Error('Server returned an invalid message response');
+      setMessages(current => current.some(item => item.id === result.message.id) ? current : [...current, result.message]);
       setDraft('');
-      await loadMessages();
+    } catch (error: any) {
+      Alert.alert('Message not sent', error?.message || 'Check your connection and try again.');
     } finally {
       setLoading(false);
     }

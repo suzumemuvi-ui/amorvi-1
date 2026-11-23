@@ -16,6 +16,11 @@ export type User = {
   latitude: number | null;
   longitude: number | null;
   images: string[];
+  city?: string;
+  jobTitle?: string;
+  education?: string;
+  dailyRoutine?: string;
+  additionalInfo?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -82,6 +87,13 @@ export type Message = {
   createdAt: string;
 };
 
+export type Pass = {
+  id: string;
+  userId: string;
+  targetUserId: string;
+  createdAt: string;
+};
+
 export type Database = {
   users: User[];
   posts: Post[];
@@ -92,6 +104,7 @@ export type Database = {
   matches: Match[];
   connections: Connection[];
   messages: Message[];
+  passes: Pass[];
 };
 
 const dataPath = path.resolve(process.cwd(), process.env.DATA_FILE ?? './data/dev.json');
@@ -109,6 +122,7 @@ const emptyDatabase = (): Database => ({
   matches: [],
   connections: [],
   messages: [],
+  passes: [],
 });
 
 export const createId = () => randomUUID();
@@ -123,6 +137,7 @@ const normalizeDatabase = (parsed: Partial<Database>): Database => ({
   matches: parsed.matches ?? [],
   connections: parsed.connections ?? [],
   messages: parsed.messages ?? [],
+  passes: parsed.passes ?? [],
 });
 
 export async function initializeStore() {
@@ -206,4 +221,10 @@ export const publicUser = (user: User) => ({
       ? { latitude: user.latitude, longitude: user.longitude }
       : null,
   images: user.images,
+  city: user.city ?? '',
+  jobTitle: user.jobTitle ?? '',
+  education: user.education ?? '',
+  dailyRoutine: user.dailyRoutine ?? '',
+  additionalInfo: user.additionalInfo ?? '',
+  createdAt: user.createdAt,
 });
