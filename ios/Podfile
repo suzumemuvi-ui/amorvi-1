@@ -9,9 +9,12 @@ platform :ios, min_ios_version_supported
 
 prepare_react_native_project!
 
-# Fix for Swift pods such as AppCheckCore
-# depending on GoogleUtilities / RecaptchaInterop
-use_modular_headers!
+# Do not force modular headers globally; some React Native pods do not like it.
+# AppCheckCore/GoogleUtilities/RecaptchaInterop are Swift pods that need module maps,
+# so configure them explicitly instead of globally.
+
+# Fix for Swift pods such as AppCheckCore depending on GoogleUtilities / RecaptchaInterop
+# These pods need module maps, but forcing modular headers globally breaks the RN pod setup.
 
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
@@ -21,6 +24,10 @@ end
 
 target 'love_alarm_app' do
   config = use_native_modules!
+
+  pod 'AppCheckCore', :modular_headers => true
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'RecaptchaInterop', :modular_headers => true
 
   use_react_native!(
     :path => config[:reactNativePath],

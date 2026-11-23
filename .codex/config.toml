@@ -1,0 +1,10 @@
+[mcp_servers.supabase]
+url = "https://mcp.supabase.com/mcp?project_ref=rnokhevrxhsopixedvgo&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching%2Cfeedback"
+default_tools_approval_mode = "prompt"
+
+[mcp_servers.render]
+url = "https://mcp.render.com/mcp"
+default_tools_approval_mode = "prompt"
+
+[mcp_servers.render.oauth]
+client_id = "codex"

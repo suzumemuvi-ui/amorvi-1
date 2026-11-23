@@ -1,5 +1,5 @@
 import { Platform, PermissionsAndroid, Linking, Alert } from 'react-native';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service';
 import { NativeModules } from 'react-native';
 
 const { RNAndroidLocationEnabler } = NativeModules;

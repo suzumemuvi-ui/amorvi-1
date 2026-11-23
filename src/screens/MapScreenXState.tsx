@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useMap } from '../context/AmorviContext';
 
@@ -31,7 +31,8 @@ const MapScreenXState = () => {
 
   // Start location tracking on mount
   useEffect(() => {
-    startLocationTracking();
+    const cleanup = startLocationTracking();
+    return cleanup;
   }, []);
 
   // Animate radar
@@ -70,7 +71,7 @@ const MapScreenXState = () => {
           'Unable to get your location. Please enable location services.'
         );
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      { enableHighAccuracy: true, timeout: 15000 }
     );
 
     // Watch position updates
@@ -83,7 +84,7 @@ const MapScreenXState = () => {
         });
       },
       error => console.error('Watch error:', error),
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 5000 }
+      { enableHighAccuracy: true, distanceFilter: 10 }
     );
 
     return () => Geolocation.clearWatch(watchId);

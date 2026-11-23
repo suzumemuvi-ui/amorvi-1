@@ -3,7 +3,7 @@ import {
   PermissionsAndroid,
   Platform,
 } from 'react-native';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service';
 import { useAuth } from '../context/AuthContextV2';
 
 type LocationData = {
@@ -26,12 +26,9 @@ export const useLocationTracking = () => {
     const requestPermission = async (): Promise<boolean> => {
       // iOS
       if (Platform.OS === 'ios') {
-        return new Promise((resolve) => {
-          Geolocation.requestAuthorization(
-            () => resolve(true),
-            () => resolve(false)
-          );
-        });
+        return Geolocation.requestAuthorization('whenInUse')
+          .then(status => status === 'granted')
+          .catch(() => false);
       }
 
       // Android
@@ -43,12 +40,10 @@ export const useLocationTracking = () => {
             'Love Alarm needs your location to show nearby people and posts.',
           buttonPositive: 'Allow',
           buttonNegative: 'Deny',
-        }
+        },
       );
 
-      return (
-        granted === PermissionsAndroid.RESULTS.GRANTED
-      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
     };
 
     const getLocation = async () => {
@@ -66,7 +61,7 @@ export const useLocationTracking = () => {
         }
 
         Geolocation.getCurrentPosition(
-          async (position) => {
+          async (position: any) => {
             const {
               latitude,
               longitude,
@@ -94,7 +89,7 @@ export const useLocationTracking = () => {
               }
             }
           },
-          (geoError) => {
+          (geoError: any) => {
             if (isMounted) {
               setError(geoError.message);
             }
@@ -103,7 +98,7 @@ export const useLocationTracking = () => {
             enableHighAccuracy: true,
             timeout: 15000,
             maximumAge: 10000,
-          }
+          },
         );
       } catch (err) {
         if (isMounted) {
@@ -119,10 +114,9 @@ export const useLocationTracking = () => {
     getLocation();
 
     // Update every 30 seconds
-    const interval = setInterval(
-      getLocation,
-      30000
-    );
+    const interval = setInterval(() => {
+      getLocation();
+    }, 30000);
 
     return () => {
       isMounted = false;
