@@ -13,8 +13,10 @@ services:
       - key: PORT
         value: 10000
       - key: CORS_ORIGIN
-        value: https://amorvi.onrender.com
+        value: https://amorvi-ce0c.onrender.com
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: amorvi-db
+          property: connectionString
       - key: JWT_SECRET
         generateValue: true
