@@ -247,8 +247,6 @@ const body = z
 
 app.post('/auth/login', async (req, res, next) => {
   try {
-    console.log('LOGIN BODY:', req.body);
-
     const body = z
       .object({
         email: z.string().trim().email(),
