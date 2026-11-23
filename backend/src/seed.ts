@@ -99,6 +99,8 @@ await writeDatabase({
     },
   ],
   passes: [],
+  stories: [],
+  notifications: [],
 });
 
 console.log('Seeded Amorvi backend.');

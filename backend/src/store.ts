@@ -94,6 +94,25 @@ export type Pass = {
   createdAt: string;
 };
 
+export type Story = {
+  id: string;
+  userId: string;
+  mediaUrl: string;
+  createdAt: string;
+  expiresAt: string;
+};
+
+export type Notification = {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+  read: boolean;
+  createdAt: string;
+};
+
 export type Database = {
   users: User[];
   posts: Post[];
@@ -105,6 +124,8 @@ export type Database = {
   connections: Connection[];
   messages: Message[];
   passes: Pass[];
+  stories: Story[];
+  notifications: Notification[];
 };
 
 const dataPath = path.resolve(process.cwd(), process.env.DATA_FILE ?? './data/dev.json');
@@ -123,6 +144,8 @@ const emptyDatabase = (): Database => ({
   connections: [],
   messages: [],
   passes: [],
+  stories: [],
+  notifications: [],
 });
 
 export const createId = () => randomUUID();
@@ -138,6 +161,8 @@ const normalizeDatabase = (parsed: Partial<Database>): Database => ({
   connections: parsed.connections ?? [],
   messages: parsed.messages ?? [],
   passes: parsed.passes ?? [],
+  stories: parsed.stories ?? [],
+  notifications: parsed.notifications ?? [],
 });
 
 export async function initializeStore() {

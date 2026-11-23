@@ -32,7 +32,10 @@ const googleWebClientId = process.env.GOOGLE_WEB_CLIENT_ID;
 const googleClient = new OAuth2Client(googleWebClientId);
 
 app.use(cors({ origin: process.env.CORS_ORIGIN ?? true }));
-app.use(express.json());
+// Profile photos are sent as data URIs by the mobile app. Allow the complete
+// profile payload (up to six compressed photos) without rejecting it at the
+// JSON parser, while still keeping a finite request-size limit.
+app.use(express.json({ limit: '20mb' }));
 
 const userSocketMap = new Map<string, Set<string>>();
 
@@ -41,6 +44,24 @@ type SocketWithUser = Socket & { user?: { id: string } };
 
 const emitNotification = (userId: string, notification: Record<string, unknown>) => {
   io.to(userId).emit('notification', notification);
+};
+
+const persistNotification = (database: Awaited<ReturnType<typeof readDatabase>>, userId: string, notification: Record<string, unknown>) => {
+  database.notifications.push({
+    id: createId(),
+    userId,
+    type: String(notification.type ?? 'general'),
+    title: String(notification.title ?? 'Notification'),
+    body: String(notification.body ?? ''),
+    data: notification.data as Record<string, unknown> | undefined,
+    read: false,
+    createdAt: new Date().toISOString(),
+  });
+  const userNotifications = database.notifications.filter(item => item.userId === userId);
+  if (userNotifications.length > 500) {
+    const remove = new Set(userNotifications.sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(0, userNotifications.length - 500).map(item => item.id));
+    database.notifications = database.notifications.filter(item => !remove.has(item.id));
+  }
 };
 
 io.use((socket: SocketWithUser, next: (err?: Error) => void) => {
@@ -128,15 +149,17 @@ io.on('connection', (socket: SocketWithUser) => {
     };
 
     database.messages.push(message);
-    await writeDatabase(database);
-
-    io.to(receiverId).emit('message_received', { message });
-    emitNotification(receiverId, {
+    const notification = {
       type: 'message',
       title: 'New message',
       body: `${sender.name} sent you a message`,
       data: { senderId: userId, receiverId },
-    });
+    };
+    persistNotification(database, receiverId, notification);
+    await writeDatabase(database);
+
+    io.to(receiverId).emit('message_received', { message });
+    emitNotification(receiverId, notification);
     socket.emit('message_sent', { message });
   });
 
@@ -148,12 +171,17 @@ io.on('connection', (socket: SocketWithUser) => {
       return;
     }
 
-    emitNotification(targetUserId, {
+    const notification = {
       type: 'match',
       title: 'New match',
       body: message,
       data: { userId: targetUserId },
-    });
+    };
+    const database = await readDatabase();
+    if (!database.users.some(user => user.id === targetUserId)) return;
+    persistNotification(database, targetUserId, notification);
+    await writeDatabase(database);
+    emitNotification(targetUserId, notification);
   });
 
   socket.on('disconnect', () => {
@@ -505,8 +533,86 @@ app.delete('/me', authenticate, async (req: AuthRequest, res) => {
   database.connections = database.connections.filter(connection => connection.userAId !== userId && connection.userBId !== userId);
   database.messages = database.messages.filter(message => message.senderId !== userId && message.receiverId !== userId);
   database.passes = database.passes.filter(pass => pass.userId !== userId && pass.targetUserId !== userId);
+  database.stories = database.stories.filter(story => story.userId !== userId);
+  database.notifications = database.notifications.filter(notification => notification.userId !== userId);
   await writeDatabase(database);
   res.status(204).end();
+});
+
+app.get('/stories', authenticate, async (req: AuthRequest, res) => {
+  const database = await readDatabase();
+  const now = Date.now();
+  const active = database.stories.filter(story => new Date(story.expiresAt).getTime() > now);
+  if (active.length !== database.stories.length) {
+    database.stories = active;
+    await writeDatabase(database);
+  }
+  const stories = database.stories
+    .map(story => {
+      const user = database.users.find(candidate => candidate.id === story.userId);
+      return user ? { ...story, user: publicUser(user) } : null;
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 100);
+  res.json({ stories });
+});
+
+app.post('/stories', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    const body = z.object({
+      mediaUrl: z.string().startsWith('data:image/').max(5_500_000),
+    }).parse(req.body);
+    const database = await readDatabase();
+    const now = new Date();
+    const story = {
+      id: createId(),
+      userId: req.user!.id,
+      mediaUrl: body.mediaUrl,
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+    database.stories = database.stories.filter(item => new Date(item.expiresAt).getTime() > now.getTime());
+    database.stories.push(story);
+    await writeDatabase(database);
+    res.status(201).json({ story });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete('/stories/:storyId', authenticate, async (req: AuthRequest, res) => {
+  const database = await readDatabase();
+  const index = database.stories.findIndex(story => story.id === req.params.storyId && story.userId === req.user!.id);
+  if (index < 0) return res.status(404).json({ error: 'Story not found' });
+  database.stories.splice(index, 1);
+  await writeDatabase(database);
+  res.status(204).end();
+});
+
+app.get('/notifications', authenticate, async (req: AuthRequest, res) => {
+  const database = await readDatabase();
+  const notifications = database.notifications
+    .filter(item => item.userId === req.user!.id)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 100);
+  res.json({ notifications, unread: notifications.filter(item => !item.read).length });
+});
+
+app.patch('/notifications/read-all', authenticate, async (req: AuthRequest, res) => {
+  const database = await readDatabase();
+  database.notifications.forEach(item => { if (item.userId === req.user!.id) item.read = true; });
+  await writeDatabase(database);
+  res.status(204).end();
+});
+
+app.patch('/notifications/:notificationId/read', authenticate, async (req: AuthRequest, res) => {
+  const database = await readDatabase();
+  const notification = database.notifications.find(item => item.id === req.params.notificationId && item.userId === req.user!.id);
+  if (!notification) return res.status(404).json({ error: 'Notification not found' });
+  notification.read = true;
+  await writeDatabase(database);
+  res.json({ notification });
 });
 
 app.post('/posts', authenticate, async (req: AuthRequest, res, next) => {
@@ -701,15 +807,17 @@ app.post('/messages', authenticate, async (req: AuthRequest, res, next) => {
     };
 
     database.messages.push(message);
-    await writeDatabase(database);
-
-    io.to(receiver.id).emit('message_received', { message });
-    emitNotification(receiver.id, {
+    const notification = {
       type: 'message',
       title: 'New message',
       body: `${database.users.find(candidate => candidate.id === req.user!.id)?.name ?? 'Someone'} sent you a message`,
       data: { senderId: req.user!.id, receiverId: receiver.id },
-    });
+    };
+    persistNotification(database, receiver.id, notification);
+    await writeDatabase(database);
+
+    io.to(receiver.id).emit('message_received', { message });
+    emitNotification(receiver.id, notification);
 
     res.status(201).json({ message });
   } catch (error) {
@@ -721,7 +829,6 @@ app.post('/messages', authenticate, async (req: AuthRequest, res, next) => {
 app.get('/feed', authenticate, async (req: AuthRequest, res) => {
   const database = await readDatabase();
   const posts = database.posts
-    .filter(post => post.userId !== req.user!.id)
     .map(post => {
       const author = database.users.find(user => user.id === post.userId);
       if (!author) return null;
@@ -834,18 +941,22 @@ app.post('/likes/:userId', authenticate, async (req: AuthRequest, res) => {
       match = { id: createId(), userAId: req.user!.id, userBId: target.id, status: 'matched', createdAt: new Date().toISOString() };
       database.matches.push(match);
 
-      emitNotification(req.user!.id, {
+      const currentUserNotification = {
         type: 'match',
         title: 'It\'s a match!',
         body: `${target.name} liked you back`,
         data: { matchId: match.id, otherUserId: target.id },
-      });
-      emitNotification(target.id, {
+      };
+      const targetNotification = {
         type: 'match',
         title: 'It\'s a match!',
         body: `${database.users.find(candidate => candidate.id === req.user!.id)?.name ?? 'Someone'} liked you back`,
         data: { matchId: match.id, otherUserId: req.user!.id },
-      });
+      };
+      persistNotification(database, req.user!.id, currentUserNotification);
+      persistNotification(database, target.id, targetNotification);
+      emitNotification(req.user!.id, currentUserNotification);
+      emitNotification(target.id, targetNotification);
     }
   }
   await writeDatabase(database);
@@ -911,12 +1022,14 @@ app.post('/connections/:userId', authenticate, async (req: AuthRequest, res) => 
   if (!connection) {
     connection = { id: createId(), userAId: req.user!.id, userBId: target.id, status: 'accepted' as const, createdAt: new Date().toISOString() };
     database.connections.push(connection);
-    emitNotification(target.id, {
+    const notification = {
       type: 'connection',
       title: 'New connection',
       body: `${database.users.find(candidate => candidate.id === req.user!.id)?.name ?? 'Someone'} accepted your connection`,
       data: { connectionId: connection.id, otherUserId: req.user!.id },
-    });
+    };
+    persistNotification(database, target.id, notification);
+    emitNotification(target.id, notification);
     await writeDatabase(database);
   }
   res.status(201).json({ connection, user: publicUser(target) });
@@ -945,6 +1058,16 @@ app.get('/messages/:userId', authenticate, async (req: AuthRequest, res) => {
 });
 
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'type' in error &&
+    (error as { type?: unknown }).type === 'entity.too.large'
+  ) {
+    res.status(413).json({ error: 'Request is too large. Use smaller photos and try again.' });
+    return;
+  }
+
   if (error instanceof z.ZodError) {
     res.status(400).json({
       error: error.issues[0]?.message ?? 'Invalid request',

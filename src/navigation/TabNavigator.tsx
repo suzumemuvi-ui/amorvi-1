@@ -10,6 +10,7 @@ import {
   EditProfileScreen,
   HomeDesignScreen,
   LikesScreen,
+  NotificationsDesignScreen,
   ProfileScreen,
   RadarScreen,
 } from '../screens/DesignScreens';
@@ -28,7 +29,7 @@ function ProfileStack() {
 }
 
 function HomeStack() {
-  return <Stack.Navigator screenOptions={{ headerShown: false }}><Stack.Screen name="HomeMain" component={HomeDesignScreen}/></Stack.Navigator>;
+  return <Stack.Navigator screenOptions={{ headerShown: false }}><Stack.Screen name="HomeMain" component={HomeDesignScreen}/><Stack.Screen name="Notifications" component={NotificationsDesignScreen}/></Stack.Navigator>;
 }
 
 function ChatStack() {
